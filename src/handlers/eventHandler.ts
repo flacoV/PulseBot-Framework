@@ -16,7 +16,10 @@ const isEventFile = (fileName: string) => {
     return false;
   }
 
-  return fileName.endsWith(".ts") || fileName.endsWith(".js");
+  const isDev = process.env.NODE_ENV !== "production";
+
+  // En desarrollo solo .ts – en producción solo .js
+  return isDev ? fileName.endsWith(".ts") : fileName.endsWith(".js");
 };
 
 const walkDirectory = async (directory: string, accumulator: string[] = []) => {
@@ -56,24 +59,13 @@ const loadEventModule = async (filePath: string): Promise<EventModule | null> =>
 };
 
 export const registerEvents = async (client: BotClient) => {
-  const eventsPath = path.join(process.cwd(), "dist", "events");
-  const srcEventsPath = path.join(process.cwd(), "src", "events");
+  const isDev = process.env.NODE_ENV !== "production";
 
-  const eventFiles: string[] = [];
+  const basePath = isDev
+    ? path.join(process.cwd(), "src", "events")
+    : path.join(process.cwd(), "dist", "events");
 
-  try {
-    const compiledEvents = await walkDirectory(eventsPath, []);
-    if (compiledEvents.length > 0) {
-      eventFiles.push(...compiledEvents);
-    }
-  } catch {
-    logger.debug("No se encontraron eventos compilados, se usarán los archivos fuente.");
-  }
-
-  if (eventFiles.length === 0) {
-    const sourceEvents = await walkDirectory(srcEventsPath, []);
-    eventFiles.push(...sourceEvents);
-  }
+  const eventFiles = await walkDirectory(basePath, []);
 
   for (const filePath of eventFiles) {
     const event = await loadEventModule(filePath);
@@ -100,4 +92,3 @@ export const registerEvents = async (client: BotClient) => {
 
   logger.info("Eventos registrados correctamente.");
 };
-
