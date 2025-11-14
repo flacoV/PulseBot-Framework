@@ -14,7 +14,13 @@ type CommandModule = {
   command?: Command;
 };
 
-const isCommandFile = (fileName: string) => fileName.endsWith(".ts") || fileName.endsWith(".js");
+const isCommandFile = (fileName: string) => {
+  if (fileName.endsWith(".d.ts") || fileName.endsWith(".map")) {
+    return false;
+  }
+
+  return fileName.endsWith(".ts") || fileName.endsWith(".js");
+};
 
 const walkDirectory = async (directory: string, accumulator: string[] = []) => {
   const entries = await readdir(directory, { withFileTypes: true });

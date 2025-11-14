@@ -46,6 +46,14 @@ export class ConfigurationService {
     await this.persistConfiguration(config);
   }
 
+  async clearWelcomeConfig(guildId: string) {
+    const config = await this.ensureConfiguration();
+    if (config.welcome[guildId]) {
+      delete config.welcome[guildId];
+      await this.persistConfiguration(config);
+    }
+  }
+
   private async ensureConfiguration() {
     if (this.configuration) return this.configuration;
 

@@ -10,12 +10,13 @@ import { logger } from "./utils/logger.js";
 
 const createClient = () => {
   const baseClient = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages],
     partials: [Partials.GuildMember, Partials.User]
   });
 
   const client = baseClient as BotClient;
   client.commands = new Collection<string, Command>();
+  client.welcomeDedupCache = new Map();
 
   return client;
 };

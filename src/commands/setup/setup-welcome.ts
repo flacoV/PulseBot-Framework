@@ -8,6 +8,26 @@ import {
 import { configurationService, type WelcomeConfig } from "../../services/configurationService.js";
 import type { Command } from "../../types/Command.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
+import {
+  DEFAULT_WELCOME_TEMPLATE,
+  createPreviewContext,
+  renderWelcomeTemplate
+} from "../../utils/welcomePlaceholders.js";
+
+const resolvePreviewDisplayName = (interaction: ChatInputCommandInteraction) => {
+  const member = interaction.member;
+  if (!member) return interaction.user.globalName ?? interaction.user.username;
+
+  if ("displayName" in member && typeof member.displayName === "string") {
+    return member.displayName;
+  }
+
+  if ("nickname" in member && typeof member.nickname === "string" && member.nickname) {
+    return member.nickname;
+  }
+
+  return interaction.user.globalName ?? interaction.user.username;
+};
 
 const builder = new SlashCommandBuilder()
   .setName("setup-welcome")
@@ -31,7 +51,7 @@ const builder = new SlashCommandBuilder()
     option
       .setName("mensaje")
       .setDescription(
-        "Mensaje de bienvenida (usa {{user}} y {{guild}} como placeholders). Máximo 500 caracteres."
+        "Mensaje de bienvenida. Placeholders: {{user}}, {{userMention}}, {{guildName}}."
       )
       .setMaxLength(500)
       .setRequired(false)
@@ -49,6 +69,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   const channel = interaction.options.getChannel("canal", true, [ChannelType.GuildText]);
   const role = interaction.options.getRole("rol");
   const message = interaction.options.getString("mensaje") ?? undefined;
+  const template = message ?? DEFAULT_WELCOME_TEMPLATE;
 
   const welcomeConfig: WelcomeConfig = {
     channelId: channel.id
@@ -64,12 +85,17 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   await configurationService.setWelcomeConfig(interaction.guildId, welcomeConfig);
 
+  const previewContext = createPreviewContext(
+    interaction.user,
+    interaction.guild?.name ?? "tu servidor",
+    resolvePreviewDisplayName(interaction)
+  );
+
   const previewEmbed = createBaseEmbed({
     title: "Vista previa de bienvenida",
-    description:
-      message ??
-      "¡Bienvenid@ {{user}}! Échale un vistazo a las reglas y disfruta tu estancia en {{guild}}.",
-    footerText: "Los placeholders {{user}} y {{guild}} se reemplazarán automáticamente."
+    description: renderWelcomeTemplate(template, previewContext),
+    footerText:
+      "Placeholders disponibles: {{user}}, {{userMention}}, {{userName}}, {{userDisplayName}}, {{userTag}}, {{guild}}, {{guildName}}, {{serverName}}."
   });
 
   const channelMention = `<#${channel.id}>`;

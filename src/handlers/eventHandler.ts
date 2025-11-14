@@ -11,7 +11,13 @@ type EventModuleDefinition = {
   event?: EventModule;
 };
 
-const isEventFile = (fileName: string) => fileName.endsWith(".ts") || fileName.endsWith(".js");
+const isEventFile = (fileName: string) => {
+  if (fileName.endsWith(".d.ts") || fileName.endsWith(".map")) {
+    return false;
+  }
+
+  return fileName.endsWith(".ts") || fileName.endsWith(".js");
+};
 
 const walkDirectory = async (directory: string, accumulator: string[] = []) => {
   const entries = await readdir(directory, { withFileTypes: true });
