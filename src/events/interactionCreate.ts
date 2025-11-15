@@ -3,6 +3,7 @@ import type { ChatInputCommandInteraction, Interaction } from "discord.js";
 import type { BotClient } from "../types/BotClient.js";
 import type { EventModule } from "../types/Event.js";
 import { logger } from "../utils/logger.js";
+import { ensureStaffAccess } from "../utils/accessControl.js";
 
 const ensureGuildContext = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild()) {
@@ -35,6 +36,11 @@ const event: EventModule<"interactionCreate"> = {
 
     if (command.guildOnly) {
       const allowed = await ensureGuildContext(interaction);
+      if (!allowed) return;
+    }
+
+    if (command.access === "staff") {
+      const allowed = await ensureStaffAccess(interaction);
       if (!allowed) return;
     }
 

@@ -123,7 +123,7 @@ const event: EventModule<"guildMemberAdd"> = {
       const description = renderWelcomeTemplate(descriptionTemplate, context);
 
       const embed = createBaseEmbed({
-        title: `¡Bienvenid@ a ${member.guild.name}!`,
+        title: `᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼¡Bienvenid@!`,
         description,
         thumbnailUrl: member.user.displayAvatarURL()
       });

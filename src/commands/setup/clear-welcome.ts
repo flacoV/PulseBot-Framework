@@ -45,7 +45,8 @@ const command: Command = {
   data: builder,
   execute,
   guildOnly: true,
-  requiredPermissions: [PermissionFlagsBits.ManageGuild]
+  requiredPermissions: [PermissionFlagsBits.ManageGuild],
+  access: "staff"
 };
 
 export default command;

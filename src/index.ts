@@ -7,6 +7,7 @@ import { registerEvents } from "./handlers/eventHandler.js";
 import type { BotClient } from "./types/BotClient.js";
 import type { Command } from "./types/Command.js";
 import { logger } from "./utils/logger.js";
+import { connectToDatabase } from "./services/database.js";
 
 const createClient = () => {
   const baseClient = new Client({
@@ -25,6 +26,7 @@ const bootstrap = async () => {
   const client = createClient();
 
   try {
+    await connectToDatabase();
     await loadCommands(client);
     await registerEvents(client);
     await registerApplicationCommands(client);
