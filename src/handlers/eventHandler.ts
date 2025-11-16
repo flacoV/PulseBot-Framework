@@ -72,17 +72,19 @@ export const registerEvents = async (client: BotClient) => {
     if (!event) continue;
 
     if (event.once) {
-      client.once(event.name, async (...args) => {
+      client.once(event.name, async (...args: unknown[]) => {
         try {
-          await event.execute(...args);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await event.execute(...(args as any));
         } catch (error) {
           logger.error(`Error en la ejecución del evento ${event.name}`, error);
         }
       });
     } else {
-      client.on(event.name, async (...args) => {
+      client.on(event.name, async (...args: unknown[]) => {
         try {
-          await event.execute(...args);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await event.execute(...(args as any));
         } catch (error) {
           logger.error(`Error en la ejecución del evento ${event.name}`, error);
         }

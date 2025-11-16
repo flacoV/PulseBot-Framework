@@ -11,7 +11,7 @@ const moderationCaseSchema = new Schema(
     type: {
       type: String,
       required: true,
-      enum: ["warn", "mute", "kick", "ban", "note"] satisfies ModerationActionType[]
+      enum: ["warn", "mute", "unmute", "kick", "ban", "note"] satisfies ModerationActionType[]
     },
     reason: { type: String, required: true },
     evidenceUrls: { type: [String], default: [] },

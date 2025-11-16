@@ -1,4 +1,7 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   PermissionFlagsBits,
   SlashCommandBuilder,
   type ChatInputCommandInteraction
@@ -54,6 +57,8 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   const targetUser = interaction.options.getUser("usuario", true);
   const typeFilter = interaction.options.getString("tipo") as ModerationActionType | null;
 
+  await interaction.deferReply();
+
   const caseQueryOptions = typeFilter ? { type: typeFilter } : undefined;
 
   const [cases, stats] = await Promise.all([
@@ -62,9 +67,9 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   ]);
 
   if (cases.length === 0) {
-    await interaction.reply({
+    await interaction.editReply({
       content: "No se encontraron registros para este miembro con los filtros seleccionados.",
-      ephemeral: true
+      embeds: []
     });
     return;
   }
@@ -77,47 +82,116 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   const totalForView = typeFilter ? stats.typeCounts[typeFilter] ?? 0 : stats.totalCases;
   const lastCaseForView = typeFilter ? cases[0] : stats.lastAction;
 
-  const embed = createBaseEmbed({
-    title: `Historial de ${targetUser.username}`,
-    description: `Se encontraron ${cases.length} registro(s)${
-      typeFilter ? ` de tipo ${typeFilter}` : ""
-    }.`,
-    footerText: "Los datos se almacenan en MongoDB para auditorías futuras."
-  });
+  const pageSize = 5;
+  const totalPages = Math.max(1, Math.ceil(cases.length / pageSize));
+  let currentPage = 0;
 
-  embed.addFields(
-    {
-      name: typeFilter ? `Total ${typeFilter}` : "Total de casos",
-      value: formatCount(totalForView),
-      inline: true
-    },
-    {
-      name: "Última acción",
-      value: lastCaseForView
-        ? `#${lastCaseForView.caseId} · ${lastCaseForView.type} · <t:${Math.floor(
-            new Date(lastCaseForView.createdAt).getTime() / 1000
-          )}:R>`
-        : "N/A",
-      inline: true
-    }
-  );
-
-  if (!typeFilter) {
-    embed.addFields({
-      name: "Totales por tipo",
-      value: summaryLines
+  const buildPageEmbed = (page: number) => {
+    const baseEmbed = createBaseEmbed({
+      title: `Historial de ${targetUser.username}`,
+      description: `Se encontraron ${cases.length} registro(s)${
+        typeFilter ? ` de tipo ${typeFilter}` : ""
+      }.`,
+      footerText: "Los datos se almacenan en MongoDB para auditorías futuras."
     });
-  }
 
-  const caseChunks = cases.map((modCase) => formatCaseLine(modCase));
-  embed.addFields({
-    name: "Registros",
-    value: caseChunks.join("\n\n")
+    baseEmbed.addFields(
+      {
+        name: typeFilter ? `Total ${typeFilter}` : "Total de casos",
+        value: formatCount(totalForView),
+        inline: true
+      },
+      {
+        name: "Última acción",
+        value: lastCaseForView
+          ? `#${lastCaseForView.caseId} · ${lastCaseForView.type} · <t:${Math.floor(
+              new Date(lastCaseForView.createdAt).getTime() / 1000
+            )}:R>`
+          : "N/A",
+        inline: true
+      }
+    );
+
+    if (!typeFilter) {
+      baseEmbed.addFields({
+        name: "Totales por tipo",
+        value: summaryLines
+      });
+    }
+
+    const start = page * pageSize;
+    const slice = cases.slice(start, start + pageSize);
+
+    const caseChunks = slice.map((modCase) => formatCaseLine(modCase));
+    baseEmbed.addFields({
+      name: `Registros (página ${page + 1}/${totalPages})`,
+      value: caseChunks.join("\n\n")
+    });
+
+    return baseEmbed;
+  };
+
+  const components =
+    totalPages > 1
+      ? [
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId("infractions_prev")
+              .setEmoji("⬅️")
+              .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+              .setCustomId("infractions_next")
+              .setEmoji("➡️")
+              .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+              .setCustomId("infractions_close")
+              .setEmoji("🗑️")
+              .setStyle(ButtonStyle.Danger)
+          )
+        ]
+      : [];
+
+  const initialMessage = await interaction.editReply({
+    content: null,
+    embeds: [buildPageEmbed(currentPage)],
+    components
   });
 
-  await interaction.reply({
-    embeds: [embed],
-    ephemeral: true
+  if (totalPages === 1) return;
+
+  const collector = initialMessage.createMessageComponentCollector({
+    filter: (i) => i.user.id === interaction.user.id,
+    time: 60_000
+  });
+
+  collector.on("collect", async (i) => {
+    if (i.customId === "infractions_close") {
+      collector.stop("closed");
+      await i.update({ components: [], embeds: [buildPageEmbed(currentPage)] });
+      return;
+    }
+
+    if (i.customId === "infractions_prev") {
+      currentPage = currentPage === 0 ? totalPages - 1 : currentPage - 1;
+    } else if (i.customId === "infractions_next") {
+      currentPage = currentPage === totalPages - 1 ? 0 : currentPage + 1;
+    }
+
+    await i.update({
+      embeds: [buildPageEmbed(currentPage)],
+      components
+    });
+  });
+
+  collector.on("end", async () => {
+    try {
+      await initialMessage.edit({
+        embeds: [buildPageEmbed(currentPage)],
+        components: []
+      });
+    } catch {
+      // mensaje borrado, ignorar
+    }
   });
 };
 

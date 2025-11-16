@@ -2,12 +2,12 @@ import type { Client, Collection } from "discord.js";
 
 import type { Command } from "./Command.js";
 
-type WelcomeDedupCache = Map<string, Map<string, NodeJS.Timeout>>;
+export type WelcomeDedupCache = Map<string, Map<string, NodeJS.Timeout>>;
+export type MuteReleaseTimers = Map<string, NodeJS.Timeout>;
 
-export type BotClient = Client & {
+export interface BotClient extends Client {
   commands: Collection<string, Command>;
   welcomeDedupCache: WelcomeDedupCache;
-};
-
-export type { WelcomeDedupCache };
+  muteReleaseTimers: MuteReleaseTimers;
+}
 

@@ -5,5 +5,10 @@
       "roleId": "1438284735557406902",
       "message": "᲼᲼᲼᲼᲼⚡ **Access Granted** Welcome {{userMention}} to {{serverName}}! You’re now part of an advanced community of innovators — make sure to check out #rules and #introductions before diving in."
     }
+  },
+  "moderation": {
+    "1438281324480827513": {
+      "muteRoleId": "1439311027719114783"
+    }
   }
 }

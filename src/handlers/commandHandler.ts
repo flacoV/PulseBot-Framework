@@ -108,7 +108,7 @@ export const registerApplicationCommands = async (client: BotClient) => {
   const guildIds = getEnvVarList("DISCORD_GUILD_IDS");
 
   const rest = new REST({ version: "10" }).setToken(token);
-  const payload = client.commands.map((command) => command.data.toJSON());
+  const payload = client.commands.map((command: Command) => command.data.toJSON());
 
   try {
     if (guildIds.length > 0) {

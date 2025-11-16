@@ -9,12 +9,18 @@ interface WelcomeConfig {
   message?: string;
 }
 
+interface ModerationConfig {
+  muteRoleId?: string;
+}
+
 interface BotConfiguration {
   welcome: Record<string, WelcomeConfig>;
+  moderation: Record<string, ModerationConfig>;
 }
 
 const DEFAULT_CONFIGURATION: BotConfiguration = {
-  welcome: {}
+  welcome: {},
+  moderation: {}
 };
 
 export class ConfigurationService {
@@ -54,6 +60,30 @@ export class ConfigurationService {
     }
   }
 
+  async getModerationConfig(guildId: string) {
+    const config = await this.ensureConfiguration();
+    return config.moderation[guildId] ?? null;
+  }
+
+  async setModerationConfig(guildId: string, partial: ModerationConfig) {
+    const config = await this.ensureConfiguration();
+    const current = config.moderation[guildId] ?? {};
+    config.moderation[guildId] = {
+      ...current,
+      ...partial
+    };
+
+    await this.persistConfiguration(config);
+  }
+
+  async clearModerationConfig(guildId: string) {
+    const config = await this.ensureConfiguration();
+    if (config.moderation[guildId]) {
+      delete config.moderation[guildId];
+      await this.persistConfiguration(config);
+    }
+  }
+
   private async ensureConfiguration() {
     if (this.configuration) return this.configuration;
 
@@ -63,7 +93,8 @@ export class ConfigurationService {
       this.configuration = {
         ...DEFAULT_CONFIGURATION,
         ...parsed,
-        welcome: parsed?.welcome ?? {}
+        welcome: parsed?.welcome ?? {},
+        moderation: parsed?.moderation ?? {}
       };
     } catch (error) {
       logger.warn(
@@ -92,5 +123,5 @@ export class ConfigurationService {
 
 export const configurationService = ConfigurationService.getInstance();
 
-export type { WelcomeConfig };
+export type { WelcomeConfig, ModerationConfig };
 
