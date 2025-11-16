@@ -11,6 +11,7 @@ import type { Command } from "../../types/Command.js";
 import type { ModerationActionType } from "../../types/Moderation.js";
 import { getUserCases, getUserStats } from "../../services/moderationService.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
+import { logger } from "../../utils/logger.js";
 
 const actionChoices: { name: string; value: ModerationActionType; icon: string }[] = [
   { name: "Advertencias", value: "warn", icon: "🔔" },
@@ -165,22 +166,31 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   });
 
   collector.on("collect", async (i) => {
-    if (i.customId === "infractions_close") {
-      collector.stop("closed");
-      await i.update({ components: [], embeds: [buildPageEmbed(currentPage)] });
-      return;
-    }
+    try {
+      await i.deferUpdate();
 
-    if (i.customId === "infractions_prev") {
-      currentPage = currentPage === 0 ? totalPages - 1 : currentPage - 1;
-    } else if (i.customId === "infractions_next") {
-      currentPage = currentPage === totalPages - 1 ? 0 : currentPage + 1;
-    }
+      if (i.customId === "infractions_close") {
+        collector.stop("closed");
+        await initialMessage.edit({
+          embeds: [buildPageEmbed(currentPage)],
+          components: []
+        });
+        return;
+      }
 
-    await i.update({
-      embeds: [buildPageEmbed(currentPage)],
-      components
-    });
+      if (i.customId === "infractions_prev") {
+        currentPage = currentPage === 0 ? totalPages - 1 : currentPage - 1;
+      } else if (i.customId === "infractions_next") {
+        currentPage = currentPage === totalPages - 1 ? 0 : currentPage + 1;
+      }
+
+      await initialMessage.edit({
+        embeds: [buildPageEmbed(currentPage)],
+        components
+      });
+    } catch (error) {
+      logger.error("Error al procesar la paginación de /infractions.", error);
+    }
   });
 
   collector.on("end", async () => {

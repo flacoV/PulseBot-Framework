@@ -11,6 +11,7 @@ import { configurationService } from "../../services/configurationService.js";
 import { createModerationCase } from "../../services/moderationService.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
 import { formatDuration, parseDurationInput } from "../../utils/duration.js";
+import { logger } from "../../utils/logger.js";
 
 const formatEvidence = (raw?: string | null) => {
   if (!raw) return [];
@@ -167,6 +168,44 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   }
 
   const moderationCase = await createModerationCase(moderationPayload);
+
+  if (expiresAt && durationMs) {
+    setTimeout(async () => {
+      try {
+        const freshGuild = await interaction.client.guilds.fetch(guild.id).catch(() => null);
+        if (!freshGuild) return;
+
+        const freshRole =
+          freshGuild.roles.cache.get(muteRole.id) ??
+          (await freshGuild.roles.fetch(muteRole.id).catch(() => null));
+        if (!freshRole) return;
+
+        const member = await freshGuild.members.fetch(targetUser.id).catch(() => null);
+        if (!member || !member.roles.cache.has(freshRole.id)) {
+          return;
+        }
+
+        await member.roles.remove(freshRole, "Mute expirado automáticamente.");
+
+        await createModerationCase({
+          guildId: freshGuild.id,
+          userId: member.id,
+          moderatorId: interaction.client.user?.id ?? "system",
+          type: "unmute",
+          reason: "Mute expirado automáticamente.",
+          metadata: {
+            muteRoleId: freshRole.id,
+            automated: true
+          }
+        });
+      } catch (error) {
+        logger.error(
+          `Error al intentar remover automáticamente el mute de ${targetUser.id} en ${guild.id}`,
+          error
+        );
+      }
+    }, durationMs).unref();
+  }
 
   const embed = createBaseEmbed({
     title: `Mute aplicado: caso #${moderationCase.caseId}`,
