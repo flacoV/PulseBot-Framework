@@ -22,3 +22,9 @@ export const getEnvVarList = (key: string): string[] => {
     .filter(Boolean);
 };
 
+export const getEnvVarOptional = (key: string, defaultValue?: string): string | undefined => {
+  const value = process.env[key];
+  if (!value || value.trim().length === 0) return defaultValue;
+  return value.trim();
+};
+
