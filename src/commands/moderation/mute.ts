@@ -12,6 +12,7 @@ import { createModerationCase } from "../../services/moderationService.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
 import { formatDuration, parseDurationInput } from "../../utils/duration.js";
 import { logger } from "../../utils/logger.js";
+import { sendModerationDm } from "../../utils/moderationDm.js";
 
 const formatEvidence = (raw?: string | null) => {
   if (!raw) return [];
@@ -187,7 +188,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
         await member.roles.remove(freshRole, "Mute expirado automáticamente.");
 
-        await createModerationCase({
+        const unmuteCase = await createModerationCase({
           guildId: freshGuild.id,
           userId: member.id,
           moderatorId: interaction.client.user?.id ?? "system",
@@ -197,6 +198,15 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
             muteRoleId: freshRole.id,
             automated: true
           }
+        });
+
+        const userForDm = await member.user.fetch();
+        await sendModerationDm({
+          user: userForDm,
+          guildName: freshGuild.name,
+          type: "unmute",
+          caseId: unmuteCase.caseId,
+          reason: "Mute expirado automáticamente."
         });
       } catch (error) {
         logger.error(
@@ -239,6 +249,25 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     embed.addFields({
       name: "Evidencia",
       value: evidence.map((item, index) => `${index + 1}. ${item}`).join("\n")
+    });
+  }
+
+  if (durationMs) {
+    await sendModerationDm({
+      user: targetUser,
+      guildName: guild.name,
+      type: "mute",
+      caseId: moderationCase.caseId,
+      reason,
+      durationText: formatDuration(durationMs)
+    });
+  } else {
+    await sendModerationDm({
+      user: targetUser,
+      guildName: guild.name,
+      type: "mute",
+      caseId: moderationCase.caseId,
+      reason
     });
   }
 

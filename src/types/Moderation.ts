@@ -1,4 +1,4 @@
-export type ModerationActionType = "warn" | "mute" | "unmute" | "kick" | "ban" | "note";
+export type ModerationActionType = "warn" | "mute" | "unmute" | "kick" | "ban" | "unban" | "note";
 
 export interface CreateModerationCaseInput {
   guildId: string;

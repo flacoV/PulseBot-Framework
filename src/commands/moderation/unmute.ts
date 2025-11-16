@@ -9,6 +9,7 @@ import type { Command } from "../../types/Command.js";
 import { configurationService } from "../../services/configurationService.js";
 import { createModerationCase } from "../../services/moderationService.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
+import { sendModerationDm } from "../../utils/moderationDm.js";
 
 const ensureHierarchy = (moderator: GuildMember, target?: GuildMember | null) => {
   if (!target) return true;
@@ -130,6 +131,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     content: "Se removió el mute correctamente.",
     embeds: [embed],
     ephemeral: true
+  });
+
+  await sendModerationDm({
+    user: targetUser,
+    guildName: guild.name,
+    type: "unmute",
+    caseId: moderationCase.caseId,
+    reason
   });
 };
 

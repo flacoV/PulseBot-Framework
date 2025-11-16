@@ -6,7 +6,7 @@ import {
 } from "discord.js";
 
 import type { Command } from "../../types/Command.js";
-import { createModerationCase, getUserStats } from "../../services/moderationService.js";
+import { createModerationCase } from "../../services/moderationService.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
 import { sendModerationDm } from "../../utils/moderationDm.js";
 
@@ -28,17 +28,17 @@ const ensureHierarchy = (moderator: GuildMember, target?: GuildMember | null) =>
 };
 
 const builder = new SlashCommandBuilder()
-  .setName("warn")
-  .setDescription("Registra una advertencia en el historial de un miembro.")
+  .setName("kick")
+  .setDescription("Expulsa a un miembro del servidor y registra la acción.")
   .setDMPermission(false)
-  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+  .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
   .addUserOption((option) =>
-    option.setName("usuario").setDescription("Miembro a advertir.").setRequired(true)
+    option.setName("usuario").setDescription("Miembro a expulsar.").setRequired(true)
   )
   .addStringOption((option) =>
     option
       .setName("razon")
-      .setDescription("Motivo de la advertencia.")
+      .setDescription("Motivo del kick.")
       .setMinLength(3)
       .setMaxLength(512)
       .setRequired(true)
@@ -66,65 +66,62 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (targetUser.bot) {
     await interaction.reply({
-      content: "No puedes advertir a un bot.",
+      content: "No puedes expulsar a un bot con este comando.",
       ephemeral: true
     });
     return;
   }
 
   const moderatorMember = await guild.members.fetch(interaction.user.id);
-  const targetMember = await guild.members.fetch({ user: targetUser.id, cache: true }).catch(() => null);
+  const targetMember = await guild.members.fetch({ user: targetUser.id }).catch(() => null);
 
-  if (!ensureHierarchy(moderatorMember, targetMember)) {
+  if (!targetMember) {
     await interaction.reply({
-      content:
-        "No puedes advertir a este miembro. Asegúrate de que tu rol sea superior y que no seas tú mismo.",
+      content: "No pude obtener al miembro especificado. Es posible que ya haya abandonado el servidor.",
       ephemeral: true
     });
     return;
   }
 
+  if (!ensureHierarchy(moderatorMember, targetMember)) {
+    await interaction.reply({
+      content: "No puedes expulsar a este miembro. Verifica la jerarquía de roles.",
+      ephemeral: true
+    });
+    return;
+  }
+
+  await targetMember.kick(`Kick por ${interaction.user.tag}: ${reason}`);
+
   const moderationCase = await createModerationCase({
     guildId: guild.id,
     userId: targetUser.id,
     moderatorId: interaction.user.id,
-    type: "warn",
+    type: "kick",
     reason,
     evidenceUrls: evidence
   });
 
-  const stats = await getUserStats(guild.id, targetUser.id);
-
-  await sendModerationDm({
-    user: targetUser,
-    guildName: guild.name,
-    type: "warn",
-    caseId: moderationCase.caseId,
-    reason
-  });
-
   const embed = createBaseEmbed({
-    title: `Advertencia #${moderationCase.caseId}`,
-    description: `Se registró una advertencia para ${targetUser}.\n> ${reason}`,
+    title: `Kick aplicado: caso #${moderationCase.caseId}`,
+    description: `${targetUser.tag} ha sido expulsado del servidor.`,
     footerText: "Usa /infractions para revisar el historial completo."
-  })
-    .addFields(
-      {
-        name: "Moderador",
-        value: `<@${interaction.user.id}>`,
-        inline: true
-      },
-      {
-        name: "Miembro",
-        value: `<@${targetUser.id}>`,
-        inline: true
-      },
-      {
-        name: "Total de advertencias",
-        value: `${stats.typeCounts.warn ?? 0}`,
-        inline: true
-      }
-    );
+  }).addFields(
+    {
+      name: "Moderador",
+      value: `<@${interaction.user.id}>`,
+      inline: true
+    },
+    {
+      name: "Miembro",
+      value: `${targetUser.tag} (${targetUser.id})`,
+      inline: true
+    },
+    {
+      name: "Motivo",
+      value: reason
+    }
+  );
 
   if (evidence.length) {
     embed.addFields({
@@ -133,19 +130,18 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
   }
 
-  if (stats.lastAction) {
-    embed.addFields({
-      name: "Última acción registrada",
-      value: `#${stats.lastAction.caseId} · ${stats.lastAction.type} · <t:${Math.floor(
-        stats.lastAction.createdAt.getTime() / 1000
-      )}:R>`
-    });
-  }
+  await sendModerationDm({
+    user: targetUser,
+    guildName: guild.name,
+    type: "kick",
+    caseId: moderationCase.caseId,
+    reason
+  });
 
   await interaction.reply({
+    content: "Kick ejecutado correctamente.",
     embeds: [embed],
-    ephemeral: true,
-    content: "Advertencia registrada correctamente."
+    ephemeral: true
   });
 };
 
@@ -153,7 +149,7 @@ const command: Command = {
   data: builder,
   execute,
   guildOnly: true,
-  requiredPermissions: [PermissionFlagsBits.ModerateMembers],
+  requiredPermissions: [PermissionFlagsBits.KickMembers],
   access: "staff"
 };
 
