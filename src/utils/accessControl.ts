@@ -36,12 +36,10 @@ const memberHasStaffRole = (member?: GuildMember | APIInteractionGuildMember | n
   return memberRoles.some((roleId) => staffRoleIds.has(roleId));
 };
 
-const fallbackManageGuild = (interaction: ChatInputCommandInteraction): boolean => {
-  if (!interaction.inGuild()) return false;
-  return interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
-};
 
-export const hasStaffAccess = (interaction: ChatInputCommandInteraction): boolean => {
+export const hasStaffAccess = (
+  interaction: ChatInputCommandInteraction | { inGuild: () => boolean; memberPermissions: any; member: any }
+): boolean => {
   if (!interaction.inGuild()) {
     return false;
   }
@@ -51,7 +49,10 @@ export const hasStaffAccess = (interaction: ChatInputCommandInteraction): boolea
   }
 
   if (!hasCustomStaffConfig()) {
-    return fallbackManageGuild(interaction);
+    if ("memberPermissions" in interaction && interaction.memberPermissions) {
+      return interaction.memberPermissions.has(PermissionFlagsBits.ManageGuild);
+    }
+    return false;
   }
 
   return false;

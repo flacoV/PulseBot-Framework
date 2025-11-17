@@ -8,7 +8,11 @@
   },
   "moderation": {
     "1438281324480827513": {
-      "muteRoleId": "1439311027719114783"
+      "muteRoleId": "1439311027719114783",
+      "logChannelId": "1440000413205139586",
+      "reportChannelId": "1440002352114569268",
+      "reportMessageId": "1440007285538820148",
+      "reportLogChannelId": "1440009467726135327"
     }
   }
 }

@@ -11,6 +11,10 @@ interface WelcomeConfig {
 
 interface ModerationConfig {
   muteRoleId?: string;
+  logChannelId?: string;
+  reportChannelId?: string;
+  reportMessageId?: string;
+  reportLogChannelId?: string;
 }
 
 interface BotConfiguration {

@@ -93,7 +93,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
       description: `Se encontraron ${cases.length} registro(s)${
         typeFilter ? ` de tipo ${typeFilter}` : ""
       }.`,
-      footerText: "Los datos se almacenan en MongoDB para auditorías futuras."
+      footerText: "Los datos se almacenan para auditorias futuras."
     });
 
     baseEmbed.addFields(

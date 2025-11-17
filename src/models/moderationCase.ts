@@ -1,4 +1,4 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, model, type InferSchemaType, type Model } from "mongoose";
 
 import type { ModerationActionType } from "../types/Moderation.js";
 
@@ -30,9 +30,9 @@ moderationCaseSchema.index({ guildId: 1, caseId: -1 }, { unique: true });
 
 export type ModerationCaseDocument = InferSchemaType<typeof moderationCaseSchema>;
 
-export const ModerationCaseModel = model<ModerationCaseDocument>(
-  "ModerationCase",
-  moderationCaseSchema
-);
+// Evitar recompilar el modelo si ya existe (útil para hot-reload)
+export const ModerationCaseModel: Model<ModerationCaseDocument> =
+  (mongoose.models["ModerationCase"] as Model<ModerationCaseDocument>) ??
+  model<ModerationCaseDocument>("ModerationCase", moderationCaseSchema);
 
 

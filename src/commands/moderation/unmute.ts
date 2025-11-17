@@ -10,6 +10,7 @@ import { configurationService } from "../../services/configurationService.js";
 import { createModerationCase } from "../../services/moderationService.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
 import { sendModerationDm } from "../../utils/moderationDm.js";
+import { logModerationAction } from "../../utils/moderationLogger.js";
 
 const ensureHierarchy = (moderator: GuildMember, target?: GuildMember | null) => {
   if (!target) return true;
@@ -139,6 +140,24 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     type: "unmute",
     caseId: moderationCase.caseId,
     reason
+  });
+
+  // Enviar log al canal de moderación
+  await logModerationAction({
+    guild,
+    actionType: "unmute",
+    caseId: moderationCase.caseId,
+    targetUser: {
+      id: targetUser.id,
+      tag: targetUser.tag,
+      username: targetUser.username
+    },
+    moderator: {
+      id: interaction.user.id,
+      tag: interaction.user.tag
+    },
+    reason,
+    metadata: moderationCase.metadata
   });
 };
 

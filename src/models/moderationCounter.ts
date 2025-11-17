@@ -1,4 +1,4 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import mongoose, { Schema, model, type InferSchemaType, type Model } from "mongoose";
 
 const moderationCounterSchema = new Schema(
   {
@@ -12,9 +12,9 @@ const moderationCounterSchema = new Schema(
 
 export type ModerationCounterDocument = InferSchemaType<typeof moderationCounterSchema>;
 
-export const ModerationCounterModel = model<ModerationCounterDocument>(
-  "ModerationCounter",
-  moderationCounterSchema
-);
+// Evitar recompilar el modelo si ya existe (útil para hot-reload)
+export const ModerationCounterModel: Model<ModerationCounterDocument> =
+  (mongoose.models["ModerationCounter"] as Model<ModerationCounterDocument>) ??
+  model<ModerationCounterDocument>("ModerationCounter", moderationCounterSchema);
 
 

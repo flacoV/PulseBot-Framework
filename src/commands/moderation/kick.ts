@@ -9,6 +9,7 @@ import type { Command } from "../../types/Command.js";
 import { createModerationCase } from "../../services/moderationService.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
 import { sendModerationDm } from "../../utils/moderationDm.js";
+import { logModerationAction } from "../../utils/moderationLogger.js";
 
 const formatEvidence = (raw?: string | null) => {
   if (!raw) return [];
@@ -142,6 +143,24 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     content: "Kick ejecutado correctamente.",
     embeds: [embed],
     ephemeral: true
+  });
+
+  // Enviar log al canal de moderación
+  await logModerationAction({
+    guild,
+    actionType: "kick",
+    caseId: moderationCase.caseId,
+    targetUser: {
+      id: targetUser.id,
+      tag: targetUser.tag,
+      username: targetUser.username
+    },
+    moderator: {
+      id: interaction.user.id,
+      tag: interaction.user.tag
+    },
+    reason,
+    evidenceUrls: evidence
   });
 };
 

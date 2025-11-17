@@ -12,6 +12,7 @@ import { createBaseEmbed } from "../../utils/embedBuilder.js";
 import { formatDuration, parseDurationInput } from "../../utils/duration.js";
 import { logger } from "../../utils/logger.js";
 import { sendModerationDm } from "../../utils/moderationDm.js";
+import { logModerationAction } from "../../utils/moderationLogger.js";
 
 const formatEvidence = (raw?: string | null) => {
   if (!raw) return [];
@@ -214,6 +215,24 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           caseId: unbanCase.caseId,
           reason: "Ban expirado automáticamente."
         });
+
+        // Log del unban automático
+        await logModerationAction({
+          guild: freshGuild,
+          actionType: "unban",
+          caseId: unbanCase.caseId,
+          targetUser: {
+            id: targetUser.id,
+            tag: targetUser.tag,
+            username: targetUser.username
+          },
+          moderator: {
+            id: interaction.client.user?.id ?? "system",
+            tag: interaction.client.user?.tag ?? "Sistema"
+          },
+          reason: "Ban expirado automáticamente.",
+          metadata: { automated: true }
+        });
       } catch (error) {
         logger.error(
           `Error al intentar remover automáticamente el ban de ${targetUser.id} en ${guild.id}`,
@@ -226,6 +245,27 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   await interaction.editReply({
     content: "Ban ejecutado correctamente.",
     embeds: [embed]
+  });
+
+  // Enviar log al canal de moderación
+  await logModerationAction({
+    guild,
+    actionType: "ban",
+    caseId: moderationCase.caseId,
+    targetUser: {
+      id: targetUser.id,
+      tag: targetUser.tag,
+      username: targetUser.username
+    },
+    moderator: {
+      id: interaction.user.id,
+      tag: interaction.user.tag
+    },
+    reason,
+    evidenceUrls: evidence,
+    ...(durationMs !== undefined && { durationMs }),
+    ...(expiresAt !== undefined && { expiresAt }),
+    ...(moderationCase.metadata && { metadata: moderationCase.metadata })
   });
 };
 
