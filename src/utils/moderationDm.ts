@@ -28,6 +28,7 @@ const buildEmbed = (options: {
   caseId?: number;
   reason: string;
   durationText?: string | null;
+  inviteUrl?: string | null;
 }) => {
   const action = ACTION_LABELS[options.type] ?? options.type;
 
@@ -39,6 +40,14 @@ const buildEmbed = (options: {
 
   if (options.durationText) {
     embed.addFields({ name: "Duration", value: options.durationText });
+  }
+
+  if (options.inviteUrl) {
+    embed.addFields({
+      name: "Server",
+      value: `[Join ${options.guildName}](${options.inviteUrl})`,
+      inline: true
+    });
   }
 
   embed.setFooter({
@@ -55,6 +64,7 @@ export const sendModerationDm = async (params: {
   caseId?: number;
   reason: string;
   durationText?: string | null;
+  inviteUrl?: string | null;
 }) => {
   try {
     const basePayload: {
@@ -63,6 +73,7 @@ export const sendModerationDm = async (params: {
       caseId?: number;
       reason: string;
       durationText?: string | null;
+      inviteUrl?: string | null;
     } = {
       guildName: params.guildName,
       type: params.type,
@@ -75,6 +86,10 @@ export const sendModerationDm = async (params: {
 
     if (params.durationText != null) {
       basePayload.durationText = params.durationText;
+    }
+
+    if (params.inviteUrl != null) {
+      basePayload.inviteUrl = params.inviteUrl;
     }
 
     const embed = buildEmbed(basePayload);

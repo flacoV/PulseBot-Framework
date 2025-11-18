@@ -10,6 +10,8 @@ import { configurationService } from "../../services/configurationService.js";
 import { createModerationCase } from "../../services/moderationService.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
 import { sendModerationDm } from "../../utils/moderationDm.js";
+import { getOrCreatePermanentInvite } from "../../utils/inviteHelper.js";
+import { logger } from "../../utils/logger.js";
 import { logModerationAction } from "../../utils/moderationLogger.js";
 
 const ensureHierarchy = (moderator: GuildMember, target?: GuildMember | null) => {
@@ -134,13 +136,21 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     ephemeral: true
   });
 
-  await sendModerationDm({
-    user: targetUser,
-    guildName: guild.name,
-    type: "unmute",
-    caseId: moderationCase.caseId,
-    reason
-  });
+  // Enviar DM con invite (sin bloquear la respuesta)
+  getOrCreatePermanentInvite(guild)
+    .then((inviteUrl) =>
+      sendModerationDm({
+        user: targetUser,
+        guildName: guild.name,
+        type: "unmute",
+        caseId: moderationCase.caseId,
+        reason,
+        inviteUrl
+      })
+    )
+    .catch((error) => {
+      logger.debug("Error al obtener invite o enviar DM en unmute:", error);
+    });
 
   // Enviar log al canal de moderación
   await logModerationAction({

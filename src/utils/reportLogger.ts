@@ -117,9 +117,16 @@ export const logUserReport = async (options: LogReportOptions): Promise<void> =>
       .setStyle(ButtonStyle.Success)
       .setEmoji("⚖️");
 
+    const openPrivateChannelButton = new ButtonBuilder()
+      .setCustomId(`open_private_channel_${caseId}`)
+      .setLabel("Abrir Canal Privado")
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("🔒");
+
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       takeReportButton,
-      giveVerdictButton
+      giveVerdictButton,
+      openPrivateChannelButton
     );
 
     await channel.send({ embeds: [embed], components: [actionRow] });

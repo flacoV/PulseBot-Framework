@@ -15,6 +15,7 @@ interface ModerationConfig {
   reportChannelId?: string;
   reportMessageId?: string;
   reportLogChannelId?: string;
+  reportPrivateChannelCategoryId?: string;
 }
 
 interface BotConfiguration {

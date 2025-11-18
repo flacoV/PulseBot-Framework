@@ -14,6 +14,7 @@ import { formatDuration, parseDurationInput } from "../../utils/duration.js";
 import { logger } from "../../utils/logger.js";
 import { sendModerationDm } from "../../utils/moderationDm.js";
 import { logModerationAction } from "../../utils/moderationLogger.js";
+import { getOrCreatePermanentInvite } from "../../utils/inviteHelper.js";
 
 const formatEvidence = (raw?: string | null) => {
   if (!raw) return [];
@@ -202,12 +203,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         });
 
         const userForDm = await member.user.fetch();
+        const inviteUrl = await getOrCreatePermanentInvite(freshGuild);
         await sendModerationDm({
           user: userForDm,
           guildName: freshGuild.name,
           type: "unmute",
           caseId: unmuteCase.caseId,
-          reason: "Mute expirado automáticamente."
+          reason: "Mute expirado automáticamente.",
+          inviteUrl
         });
 
         // Log del unmute automático
@@ -271,30 +274,39 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
   }
 
-  if (durationMs) {
-    await sendModerationDm({
-      user: targetUser,
-      guildName: guild.name,
-      type: "mute",
-      caseId: moderationCase.caseId,
-      reason,
-      durationText: formatDuration(durationMs)
-    });
-  } else {
-    await sendModerationDm({
-      user: targetUser,
-      guildName: guild.name,
-      type: "mute",
-      caseId: moderationCase.caseId,
-      reason
-    });
-  }
-
   await interaction.reply({
     content: "Se aplicó el mute correctamente.",
     embeds: [embed],
     ephemeral: true
   });
+
+  // Enviar DM con invite (sin bloquear la respuesta)
+  getOrCreatePermanentInvite(guild)
+    .then((inviteUrl) => {
+      if (durationMs) {
+        return sendModerationDm({
+          user: targetUser,
+          guildName: guild.name,
+          type: "mute",
+          caseId: moderationCase.caseId,
+          reason,
+          durationText: formatDuration(durationMs),
+          inviteUrl
+        });
+      } else {
+        return sendModerationDm({
+          user: targetUser,
+          guildName: guild.name,
+          type: "mute",
+          caseId: moderationCase.caseId,
+          reason,
+          inviteUrl
+        });
+      }
+    })
+    .catch((error) => {
+      logger.debug("Error al obtener invite o enviar DM en mute:", error);
+    });
 
   // Enviar log al canal de moderación
   await logModerationAction({

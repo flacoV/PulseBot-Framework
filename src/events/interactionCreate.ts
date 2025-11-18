@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction, Interaction } from "discord.js";
+import type { ChatInputCommandInteraction, Interaction, TextChannel } from "discord.js";
 
 import type { BotClient } from "../types/BotClient.js";
 import type { EventModule } from "../types/Event.js";
@@ -118,6 +118,210 @@ const event: EventModule<"interactionCreate"> = {
           logger.error("Error al mostrar el modal de veredicto:", error);
           await interaction.reply({
             content: "Ocurrió un error al abrir el formulario de veredicto.",
+            ephemeral: true
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      // Botón "Abrir Canal Privado"
+      if (interaction.customId.startsWith("open_private_channel_")) {
+        if (!interaction.inGuild() || !interaction.guild) {
+          await (interaction as any).reply({
+            content: "Este botón solo puede usarse dentro de un servidor.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        // Verificar que sea staff
+        const hasAccess = hasStaffAccess(interaction as any);
+        if (!hasAccess) {
+          await (interaction as any).reply({
+            content:
+              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        await interaction.deferUpdate();
+
+        try {
+          const caseId = parseInt(interaction.customId.replace("open_private_channel_", ""));
+
+          // Obtener información del reporte desde el embed
+          const embed = interaction.message.embeds[0];
+          if (!embed || !embed.fields) {
+            await interaction.followUp({
+              content: "No se pudo obtener la información del reporte.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          // Extraer IDs del reportante y reportado desde los campos del embed
+          let reporterId: string | null = null;
+          let reportedUserId: string | null = null;
+          let reason = "";
+          const evidenceUrls: string[] = [];
+
+          for (const field of embed.fields) {
+            if (field.name === "Reportante") {
+              const match = field.value?.match(/<@(\d+)>/);
+              if (match && match[1]) reporterId = match[1];
+            } else if (field.name === "Reportado") {
+              const match = field.value?.match(/<@(\d+)>/);
+              if (match && match[1]) reportedUserId = match[1];
+            } else if (field.name === "Motivo del Reporte") {
+              reason = field.value || "";
+            } else if (field.name === "Evidencia") {
+              const value = field.value || "";
+              const urls = value.split("\n").map((line) => {
+                const match = line.match(/^\d+\.\s*(.+)$/);
+                return match && match[1] ? match[1].trim() : line.trim();
+              });
+              evidenceUrls.push(...urls.filter((url) => url));
+            }
+          }
+
+          if (!reporterId || !reportedUserId) {
+            await interaction.followUp({
+              content: "No se pudo identificar al reportante o reportado desde el embed.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          // Obtener información de los usuarios para el mensaje inicial
+          const reporter = await interaction.guild.client.users.fetch(reporterId).catch(() => null);
+          const reportedUser = await interaction.guild.client.users.fetch(reportedUserId).catch(() => null);
+
+          if (!reporter || !reportedUser) {
+            await interaction.followUp({
+              content: "No se pudieron obtener los datos de los usuarios involucrados.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          // Crear el canal privado
+          const {
+            createPrivateReportChannel,
+            sendInitialReportChannelMessage,
+            updateReportEmbedWithChannel
+          } = await import("../utils/reportChannelHandler.js");
+
+          const channel = await createPrivateReportChannel(
+            interaction.guild,
+            caseId,
+            reporterId,
+            reportedUserId
+          );
+
+          if (!channel) {
+            await interaction.followUp({
+              content:
+                "No se pudo crear el canal privado. Verifica que la categoría esté configurada correctamente con `/setup-report-private-category`.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          // Enviar mensaje inicial en el canal
+          await sendInitialReportChannelMessage(
+            channel,
+            caseId,
+            { id: reporterId, tag: reporter.tag },
+            { id: reportedUserId, tag: reportedUser.tag },
+            reason,
+            evidenceUrls.length > 0 ? evidenceUrls : undefined
+          );
+
+          // Actualizar el embed del reporte
+          if (interaction.message) {
+            await updateReportEmbedWithChannel(
+              interaction.message,
+              caseId,
+              channel,
+              { id: interaction.user.id, tag: interaction.user.tag }
+            );
+          }
+
+          await interaction.followUp({
+            content: `✅ Canal privado creado: <#${channel.id}>`,
+            ephemeral: true
+          }).catch(() => {});
+        } catch (error) {
+          logger.error("Error al crear canal privado de reporte:", error);
+          await interaction.followUp({
+            content: "Ocurrió un error al crear el canal privado.",
+            ephemeral: true
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      // Botón "Cerrar Canal Privado"
+      if (interaction.customId.startsWith("close_report_channel_")) {
+        if (!interaction.inGuild() || !interaction.guild) {
+          await (interaction as any).reply({
+            content: "Este botón solo puede usarse dentro de un servidor.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        // Verificar que sea staff
+        const hasAccess = hasStaffAccess(interaction as any);
+        if (!hasAccess) {
+          await (interaction as any).reply({
+            content:
+              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+          const caseId = parseInt(interaction.customId.replace("close_report_channel_", ""));
+
+          if (!interaction.channel || !interaction.channel.isTextBased() || interaction.channel.isDMBased()) {
+            await interaction.followUp({
+              content: "Este comando solo puede usarse en un canal de texto del servidor.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          const channel = interaction.channel as TextChannel;
+
+          // Verificar que el canal sea un canal privado de reporte
+          if (!channel.name.startsWith("reporte-")) {
+            await interaction.followUp({
+              content: "Este comando solo puede usarse en canales privados de reportes.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          const { closeReportChannel } = await import("../utils/reportChannelHandler.js");
+
+          await closeReportChannel(channel, caseId, {
+            id: interaction.user.id,
+            tag: interaction.user.tag
+          });
+
+          await interaction.followUp({
+            content: "✅ Canal cerrado correctamente.",
+            ephemeral: true
+          }).catch(() => {});
+        } catch (error) {
+          logger.error("Error al cerrar canal privado de reporte:", error);
+          await interaction.followUp({
+            content: "Ocurrió un error al cerrar el canal.",
             ephemeral: true
           }).catch(() => {});
         }

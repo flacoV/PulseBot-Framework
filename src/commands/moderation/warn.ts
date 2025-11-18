@@ -9,6 +9,8 @@ import type { Command } from "../../types/Command.js";
 import { createModerationCase, getUserStats } from "../../services/moderationService.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
 import { sendModerationDm } from "../../utils/moderationDm.js";
+import { getOrCreatePermanentInvite } from "../../utils/inviteHelper.js";
+import { logger } from "../../utils/logger.js";
 import { logModerationAction } from "../../utils/moderationLogger.js";
 
 const formatEvidence = (raw?: string | null) => {
@@ -96,14 +98,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   const stats = await getUserStats(guild.id, targetUser.id);
 
-  await sendModerationDm({
-    user: targetUser,
-    guildName: guild.name,
-    type: "warn",
-    caseId: moderationCase.caseId,
-    reason
-  });
-
   const embed = createBaseEmbed({
     title: `Advertencia #${moderationCase.caseId}`,
     description: `Se registró una advertencia para ${targetUser}.\n> ${reason}`,
@@ -148,6 +142,22 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     ephemeral: true,
     content: "Advertencia registrada correctamente."
   });
+
+  // Enviar DM con invite (sin bloquear la respuesta)
+  getOrCreatePermanentInvite(guild)
+    .then((inviteUrl) =>
+      sendModerationDm({
+        user: targetUser,
+        guildName: guild.name,
+        type: "warn",
+        caseId: moderationCase.caseId,
+        reason,
+        inviteUrl
+      })
+    )
+    .catch((error) => {
+      logger.debug("Error al obtener invite o enviar DM en warn:", error);
+    });
 
   // Enviar log al canal de moderación
   await logModerationAction({

@@ -13,6 +13,7 @@ import { formatDuration, parseDurationInput } from "../../utils/duration.js";
 import { logger } from "../../utils/logger.js";
 import { sendModerationDm } from "../../utils/moderationDm.js";
 import { logModerationAction } from "../../utils/moderationLogger.js";
+import { getOrCreatePermanentInvite } from "../../utils/inviteHelper.js";
 
 const formatEvidence = (raw?: string | null) => {
   if (!raw) return [];
@@ -161,26 +162,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
   }
 
-  // Enviamos el DM antes de confirmar la respuesta final, para minimizar
-  // efectos secundarios si el usuario tiene MD cerrados.
-  if (durationMs) {
-    await sendModerationDm({
-      user: targetUser,
-      guildName: guild.name,
-      type: "ban",
-      reason,
-      durationText: formatDuration(durationMs)
-    });
-  } else {
-    await sendModerationDm({
-      user: targetUser,
-      guildName: guild.name,
-      type: "ban",
-      reason
-    });
-  }
-
-  // Aplicamos el ban después de intentar notificar por DM.
+  // Aplicamos el ban primero
   await guild.members.ban(targetUser.id, {
     reason: `Ban por ${interaction.user.tag}: ${reason}`
   });
@@ -208,12 +190,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           }
         });
 
+        const inviteUrl = await getOrCreatePermanentInvite(freshGuild);
         await sendModerationDm({
           user: targetUser,
           guildName: freshGuild.name,
           type: "unban",
           caseId: unbanCase.caseId,
-          reason: "Ban expirado automáticamente."
+          reason: "Ban expirado automáticamente.",
+          inviteUrl
         });
 
         // Log del unban automático
@@ -246,6 +230,32 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     content: "Ban ejecutado correctamente.",
     embeds: [embed]
   });
+
+  // Enviar DM con invite (sin bloquear la respuesta)
+  getOrCreatePermanentInvite(guild)
+    .then((inviteUrl) => {
+      if (durationMs) {
+        return sendModerationDm({
+          user: targetUser,
+          guildName: guild.name,
+          type: "ban",
+          reason,
+          durationText: formatDuration(durationMs),
+          inviteUrl
+        });
+      } else {
+        return sendModerationDm({
+          user: targetUser,
+          guildName: guild.name,
+          type: "ban",
+          reason,
+          inviteUrl
+        });
+      }
+    })
+    .catch((error) => {
+      logger.debug("Error al obtener invite o enviar DM en ban:", error);
+    });
 
   // Enviar log al canal de moderación
   await logModerationAction({

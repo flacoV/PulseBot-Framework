@@ -9,6 +9,8 @@ import type { Command } from "../../types/Command.js";
 import { createModerationCase } from "../../services/moderationService.js";
 import { createBaseEmbed } from "../../utils/embedBuilder.js";
 import { sendModerationDm } from "../../utils/moderationDm.js";
+import { getOrCreatePermanentInvite } from "../../utils/inviteHelper.js";
+import { logger } from "../../utils/logger.js";
 import { logModerationAction } from "../../utils/moderationLogger.js";
 
 const formatEvidence = (raw?: string | null) => {
@@ -131,19 +133,27 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
   }
 
-  await sendModerationDm({
-    user: targetUser,
-    guildName: guild.name,
-    type: "kick",
-    caseId: moderationCase.caseId,
-    reason
-  });
-
   await interaction.reply({
     content: "Kick ejecutado correctamente.",
     embeds: [embed],
     ephemeral: true
   });
+
+  // Enviar DM con invite (sin bloquear la respuesta)
+  getOrCreatePermanentInvite(guild)
+    .then((inviteUrl) =>
+      sendModerationDm({
+        user: targetUser,
+        guildName: guild.name,
+        type: "kick",
+        caseId: moderationCase.caseId,
+        reason,
+        inviteUrl
+      })
+    )
+    .catch((error) => {
+      logger.debug("Error al obtener invite o enviar DM en kick:", error);
+    });
 
   // Enviar log al canal de moderación
   await logModerationAction({
