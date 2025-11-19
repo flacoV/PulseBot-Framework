@@ -328,11 +328,376 @@ const event: EventModule<"interactionCreate"> = {
         return;
       }
 
+      // Botones para abrir tickets (4 categorías)
+      if (
+        interaction.customId === "ticket_open_general" ||
+        interaction.customId === "ticket_open_support" ||
+        interaction.customId === "ticket_open_reports" ||
+        interaction.customId === "ticket_open_other"
+      ) {
+        if (!interaction.inGuild() || !interaction.guild) {
+          await (interaction as any).reply({
+            content: "Este botón solo puede usarse dentro de un servidor.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+          const category = interaction.customId.replace("ticket_open_", "") as
+            | "general"
+            | "support"
+            | "reports"
+            | "other";
+
+          const { createTicket, sendTicketInitialMessage } = await import("../utils/ticketHandler.js");
+
+          const channel = await createTicket(interaction.guild, interaction.user.id, category);
+
+          if (!channel) {
+            await interaction.followUp({
+              content:
+                "No se pudo crear el ticket. Verifica que la categoría esté configurada correctamente con `/setup-ticket-category`.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          await sendTicketInitialMessage(channel, interaction.user.id, category);
+
+          await interaction.followUp({
+            content: `✅ Ticket creado: <#${channel.id}>`,
+            ephemeral: true
+          }).catch(() => {});
+        } catch (error) {
+          logger.error("Error al crear ticket:", error);
+          await interaction.followUp({
+            content: "Ocurrió un error al crear el ticket.",
+            ephemeral: true
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      // Botón "Tomar Ticket"
+      if (interaction.customId.startsWith("ticket_take_")) {
+        if (!interaction.inGuild() || !interaction.guild) {
+          await (interaction as any).reply({
+            content: "Este botón solo puede usarse dentro de un servidor.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        // Verificar que sea staff
+        const hasAccess = hasStaffAccess(interaction as any);
+        if (!hasAccess) {
+          await (interaction as any).reply({
+            content:
+              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        await interaction.deferUpdate();
+
+        try {
+          const channelId = interaction.customId.replace("ticket_take_", "");
+          const channel = (await interaction.guild.channels
+            .fetch(channelId)
+            .catch(() => null)) as TextChannel | null;
+
+          if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+            await interaction.followUp({
+              content: "No se pudo encontrar el canal del ticket.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          // Buscar el mensaje inicial del ticket
+          const messages = await channel.messages.fetch({ limit: 10 });
+          const initialMessage = messages.find((m) => m.embeds.length > 0 && m.components.length > 0);
+
+          if (initialMessage) {
+            const { updateTicketEmbedTaken } = await import("../utils/ticketHandler.js");
+            await updateTicketEmbedTaken(initialMessage, {
+              id: interaction.user.id,
+              tag: interaction.user.tag
+            });
+          }
+        } catch (error) {
+          logger.error("Error al tomar el ticket:", error);
+          await interaction.followUp({
+            content: "Ocurrió un error al tomar el ticket.",
+            ephemeral: true
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      // Botón "Cerrar Ticket"
+      if (interaction.customId.startsWith("ticket_close_")) {
+        if (!interaction.inGuild() || !interaction.guild) {
+          await (interaction as any).reply({
+            content: "Este botón solo puede usarse dentro de un servidor.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        // Verificar que sea staff
+        const hasAccess = hasStaffAccess(interaction as any);
+        if (!hasAccess) {
+          await (interaction as any).reply({
+            content:
+              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        try {
+          const channelId = interaction.customId.replace("ticket_close_", "");
+          const { createCloseTicketModal } = await import("../utils/ticketHandler.js");
+          const modal = createCloseTicketModal(channelId);
+          await interaction.showModal(modal);
+        } catch (error) {
+          logger.error("Error al mostrar el modal de cierre de ticket:", error);
+          await interaction.reply({
+            content: "Ocurrió un error al abrir el formulario de cierre.",
+            ephemeral: true
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      // Botón "Guardar Transcript"
+      if (interaction.customId.startsWith("ticket_transcript_")) {
+        if (!interaction.inGuild() || !interaction.guild) {
+          await (interaction as any).reply({
+            content: "Este botón solo puede usarse dentro de un servidor.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        // Verificar que sea staff
+        const hasAccess = hasStaffAccess(interaction as any);
+        if (!hasAccess) {
+          await (interaction as any).reply({
+            content:
+              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+          const channelId = interaction.customId.replace("ticket_transcript_", "");
+          const channel = (await interaction.guild.channels
+            .fetch(channelId)
+            .catch(() => null)) as TextChannel | null;
+
+          if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+            await interaction.followUp({
+              content: "No se pudo encontrar el canal del ticket.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          // Verificar que el canal sea un ticket
+          if (!channel.name.startsWith("ticket-")) {
+            await interaction.followUp({
+              content: "Este comando solo puede usarse en canales de tickets.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          const { generateTranscript } = await import("../utils/ticketHandler.js");
+
+          await generateTranscript(channel, {
+            id: interaction.user.id,
+            tag: interaction.user.tag
+          });
+
+          await interaction.followUp({
+            content: "✅ Transcript guardado correctamente.",
+            ephemeral: true
+          }).catch(() => {});
+        } catch (error) {
+          logger.error("Error al generar transcript:", error);
+          await interaction.followUp({
+            content: `Ocurrió un error al generar el transcript: ${error instanceof Error ? error.message : "Error desconocido"}`,
+            ephemeral: true
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      // Botón "Tomar Ticket"
+      if (interaction.customId.startsWith("ticket_take_")) {
+        if (!interaction.inGuild() || !interaction.guild) {
+          await (interaction as any).reply({
+            content: "Este botón solo puede usarse dentro de un servidor.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        // Verificar que sea staff
+        const hasAccess = hasStaffAccess(interaction as any);
+        if (!hasAccess) {
+          await (interaction as any).reply({
+            content:
+              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        await interaction.deferUpdate();
+
+        try {
+          const channelId = interaction.customId.replace("ticket_take_", "");
+          const channel = (await interaction.guild.channels
+            .fetch(channelId)
+            .catch(() => null)) as TextChannel | null;
+
+          if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+            await interaction.followUp({
+              content: "No se pudo encontrar el canal del ticket.",
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
+
+          // Buscar el mensaje inicial del ticket
+          const messages = await channel.messages.fetch({ limit: 10 });
+          const initialMessage = messages.find((m) => m.embeds.length > 0 && m.components.length > 0);
+
+          if (initialMessage) {
+            const { updateTicketEmbedTaken } = await import("../utils/ticketHandler.js");
+            await updateTicketEmbedTaken(initialMessage, {
+              id: interaction.user.id,
+              tag: interaction.user.tag
+            });
+          }
+        } catch (error) {
+          logger.error("Error al tomar el ticket:", error);
+          await interaction.followUp({
+            content: "Ocurrió un error al tomar el ticket.",
+            ephemeral: true
+          }).catch(() => {});
+        }
+        return;
+      }
+
       return;
     }
 
-    // Manejar modales (envío de reporte y veredicto)
+    // Manejar modales (envío de reporte, veredicto y cierre de ticket)
     if (interaction.isModalSubmit()) {
+      // Modal de cierre de ticket
+      if (interaction.customId.startsWith("close_ticket_modal_")) {
+        if (!interaction.inGuild() || !interaction.guild) {
+          await interaction.reply({
+            content: "Este formulario solo puede usarse dentro de un servidor.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        // Verificar que sea staff
+        const hasAccess = hasStaffAccess(interaction as any);
+        if (!hasAccess) {
+          await interaction.reply({
+            content:
+              "Este formulario está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+          const channelId = interaction.customId.replace("close_ticket_modal_", "");
+          const reason = interaction.fields.getTextInputValue("close_reason");
+
+          const channel = (await interaction.guild.channels
+            .fetch(channelId)
+            .catch(() => null)) as TextChannel | null;
+
+          if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+            try {
+              await interaction.editReply({
+                content: "No se pudo encontrar el canal del ticket."
+              });
+            } catch {
+              await interaction.followUp({
+                content: "No se pudo encontrar el canal del ticket.",
+                ephemeral: true
+              }).catch(() => {});
+            }
+            return;
+          }
+
+          // Verificar que el canal sea un ticket
+          if (!channel.name.startsWith("ticket-")) {
+            try {
+              await interaction.editReply({
+                content: "Este comando solo puede usarse en canales de tickets."
+              });
+            } catch {
+              await interaction.followUp({
+                content: "Este comando solo puede usarse en canales de tickets.",
+                ephemeral: true
+              }).catch(() => {});
+            }
+            return;
+          }
+
+          const { closeTicket } = await import("../utils/ticketHandler.js");
+
+          await closeTicket(channel, {
+            id: interaction.user.id,
+            tag: interaction.user.tag
+          }, reason);
+
+          try {
+            await interaction.editReply({
+              content: "✅ Ticket cerrado correctamente."
+            });
+          } catch {
+            await interaction.followUp({
+              content: "✅ Ticket cerrado correctamente.",
+              ephemeral: true
+            }).catch(() => {});
+          }
+        } catch (error) {
+          logger.error("Error al cerrar ticket:", error);
+          try {
+            await interaction.editReply({
+              content: "Ocurrió un error al cerrar el ticket."
+            });
+          } catch {
+            await interaction.followUp({
+              content: "Ocurrió un error al cerrar el ticket.",
+              ephemeral: true
+            }).catch(() => {});
+          }
+        }
+        return;
+      }
+
       if (interaction.customId === "report_user_modal") {
         if (!interaction.inGuild() || !interaction.guild) {
           await interaction.reply({

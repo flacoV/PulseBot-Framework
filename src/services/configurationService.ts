@@ -18,14 +18,24 @@ interface ModerationConfig {
   reportPrivateChannelCategoryId?: string;
 }
 
+interface TicketConfig {
+  categoryId?: string;
+  logChannelId?: string;
+  transcriptChannelId?: string;
+  panelChannelId?: string;
+  panelMessageId?: string;
+}
+
 interface BotConfiguration {
   welcome: Record<string, WelcomeConfig>;
   moderation: Record<string, ModerationConfig>;
+  tickets: Record<string, TicketConfig>;
 }
 
 const DEFAULT_CONFIGURATION: BotConfiguration = {
   welcome: {},
-  moderation: {}
+  moderation: {},
+  tickets: {}
 };
 
 export class ConfigurationService {
@@ -89,6 +99,30 @@ export class ConfigurationService {
     }
   }
 
+  async getTicketConfig(guildId: string) {
+    const config = await this.ensureConfiguration();
+    return config.tickets[guildId] ?? null;
+  }
+
+  async setTicketConfig(guildId: string, partial: TicketConfig) {
+    const config = await this.ensureConfiguration();
+    const current = config.tickets[guildId] ?? {};
+    config.tickets[guildId] = {
+      ...current,
+      ...partial
+    };
+
+    await this.persistConfiguration(config);
+  }
+
+  async clearTicketConfig(guildId: string) {
+    const config = await this.ensureConfiguration();
+    if (config.tickets[guildId]) {
+      delete config.tickets[guildId];
+      await this.persistConfiguration(config);
+    }
+  }
+
   private async ensureConfiguration() {
     if (this.configuration) return this.configuration;
 
@@ -99,7 +133,8 @@ export class ConfigurationService {
         ...DEFAULT_CONFIGURATION,
         ...parsed,
         welcome: parsed?.welcome ?? {},
-        moderation: parsed?.moderation ?? {}
+        moderation: parsed?.moderation ?? {},
+        tickets: parsed?.tickets ?? {}
       };
     } catch (error) {
       logger.warn(
@@ -128,5 +163,5 @@ export class ConfigurationService {
 
 export const configurationService = ConfigurationService.getInstance();
 
-export type { WelcomeConfig, ModerationConfig };
+export type { WelcomeConfig, ModerationConfig, TicketConfig };
 

@@ -15,5 +15,14 @@
       "reportLogChannelId": "1440009467726135327",
       "reportPrivateChannelCategoryId": "1440459422118973494"
     }
+  },
+  "tickets": {
+    "1438281324480827513": {
+      "categoryId": "1440513917863461101",
+      "logChannelId": "1440513971235848202",
+      "transcriptChannelId": "1440514109753004112",
+      "panelChannelId": "1440513939485233265",
+      "panelMessageId": "1440514512188084365"
+    }
   }
 }
