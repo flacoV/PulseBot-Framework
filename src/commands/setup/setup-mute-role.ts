@@ -10,17 +10,17 @@ import type { Command } from "../../types/Command.js";
 
 const builder = new SlashCommandBuilder()
   .setName("setup-mute-role")
-  .setDescription("Define el rol que se usará para silenciar miembros.")
+  .setDescription("Defines the role that will be used to mute members.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addRoleOption((option) =>
-    option.setName("rol").setDescription("Rol que se asignará al silenciar.").setRequired(true)
+    option.setName("role").setDescription("Role that will be used to mute members.").setRequired(true)
   );
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild() || !interaction.guild) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       ephemeral: true
     });
     return;
@@ -28,14 +28,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   await interaction.deferReply({ flags: "Ephemeral" });
 
-  const selectedRole = interaction.options.getRole("rol", true);
+  const selectedRole = interaction.options.getRole("role", true);
   const role =
     interaction.guild.roles.cache.get(selectedRole.id) ??
     ((await interaction.guild.roles.fetch(selectedRole.id).catch(() => null)) as Role | null);
 
   if (!role) {
     await interaction.editReply({
-      content: "No pude encontrar ese rol en la caché del servidor. Intenta nuevamente.",
+      content: "I was unable to find that role in the server's cache. Try again.",
       embeds: []
     });
     return;
@@ -45,7 +45,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (role.managed) {
     await interaction.reply({
-      content: "No puedes seleccionar un rol gestionado por una integración.",
+      content: "You cannot select a role managed by an integration.",
       ephemeral: true
     });
     return;
@@ -53,7 +53,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!role.editable || role.position >= me.roles.highest.position) {
     await interaction.editReply({
-      content: "No puedo administrar ese rol. Asegúrate de que esté por debajo del rol del bot.",
+      content: "You cannot manage that role. Make sure it is below the bot's role.",
       embeds: []
     });
     return;
@@ -62,7 +62,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   await configurationService.setModerationConfig(interaction.guildId, { muteRoleId: role.id });
 
   await interaction.editReply({
-    content: `El rol ${role} se usará para aplicar los mutes.`,
+    content: `The role ${role} will be used to apply mutes.`,
     embeds: []
   });
 };

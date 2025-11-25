@@ -14,23 +14,23 @@ import { createBaseEmbed } from "../../utils/embedBuilder.js";
 import { logger } from "../../utils/logger.js";
 
 const actionChoices: { name: string; value: ModerationActionType; icon: string }[] = [
-  { name: "Advertencias", value: "warn", icon: "🔔" },
-  { name: "Silencios", value: "mute", icon: "🔇" },
-  { name: "Expulsiones", value: "kick", icon: "👋" },
-  { name: "Baneos", value: "ban", icon: "🔨" },
-  { name: "Notas", value: "note", icon: "📝" }
+  { name: "Warnings", value: "warn", icon: "🔔" },
+  { name: "Mutes", value: "mute", icon: "🔇" },
+  { name: "Kicks", value: "kick", icon: "👋" },
+  { name: "Bans", value: "ban", icon: "🔨" },
+  { name: "Notes", value: "note", icon: "📝" }
 ];
 
 const builder = new SlashCommandBuilder()
   .setName("infractions")
-  .setDescription("Consulta el historial disciplinario de un miembro.")
+  .setDescription("View the disciplinary history of a member.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
   .addUserOption((option) =>
-    option.setName("usuario").setDescription("Miembro a consultar.").setRequired(true)
+    option.setName("user").setDescription("User to view the disciplinary history of.").setRequired(true)
   )
   .addStringOption((option) => {
-    option.setName("tipo").setDescription("Opcional: Filtra por tipo específico o busca todos los tipos.");
+    option.setName("type").setDescription("Optional: Filter by specific type or search all types.");
     actionChoices.forEach((choice) => option.addChoices(choice));
     return option;
   });
@@ -43,20 +43,20 @@ const formatCaseLine = (modCase: {
   moderatorId: string;
 }) => {
   const timestamp = `<t:${Math.floor(new Date(modCase.createdAt).getTime() / 1000)}:R>`;
-  return `#${modCase.caseId} · **${modCase.type.toUpperCase()}** · ${timestamp}\n> ${modCase.reason}\n> Responsable: <@${modCase.moderatorId}>`;
+  return `#${modCase.caseId} · **${modCase.type.toUpperCase()}** · ${timestamp}\n> ${modCase.reason}\n> Responsible: <@${modCase.moderatorId}>`;
 };
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild() || !interaction.guild) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       ephemeral: true
     });
     return;
   }
 
-  const targetUser = interaction.options.getUser("usuario", true);
-  const typeFilter = interaction.options.getString("tipo") as ModerationActionType | null;
+  const targetUser = interaction.options.getUser("user", true);
+  const typeFilter = interaction.options.getString("type") as ModerationActionType | null;
 
   await interaction.deferReply();
 
@@ -69,7 +69,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (cases.length === 0) {
     await interaction.editReply({
-      content: "No se encontraron registros para este miembro con los filtros seleccionados.",
+      content: "No records found for this member with the selected filters.",
       embeds: []
     });
     return;
@@ -89,21 +89,21 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   const buildPageEmbed = (page: number) => {
     const baseEmbed = createBaseEmbed({
-      title: `Historial de ${targetUser.username}`,
-      description: `Se encontraron ${cases.length} registro(s)${
-        typeFilter ? ` de tipo ${typeFilter}` : ""
+      title: `History of ${targetUser.username}`,
+      description: `Found ${cases.length} record(s)${
+        typeFilter ? ` of type ${typeFilter}` : ""
       }.`,
-      footerText: "Los datos se almacenan para auditorias futuras."
+      footerText: "These records are stored for future audits."
     });
 
     baseEmbed.addFields(
       {
-        name: typeFilter ? `Total ${typeFilter}` : "Total de casos",
+        name: typeFilter ? `Total ${typeFilter}` : "Total cases",
         value: formatCount(totalForView),
         inline: true
       },
       {
-        name: "Última acción",
+        name: "Last action",
         value: lastCaseForView
           ? `#${lastCaseForView.caseId} · ${lastCaseForView.type} · <t:${Math.floor(
               new Date(lastCaseForView.createdAt).getTime() / 1000
@@ -115,7 +115,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
     if (!typeFilter) {
       baseEmbed.addFields({
-        name: "Totales por tipo",
+        name: "Total by type",
         value: summaryLines
       });
     }
@@ -125,7 +125,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
     const caseChunks = slice.map((modCase) => formatCaseLine(modCase));
     baseEmbed.addFields({
-      name: `Registros (página ${page + 1}/${totalPages})`,
+      name: `Records (page ${page + 1}/${totalPages})`,
       value: caseChunks.join("\n\n")
     });
 
@@ -189,7 +189,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         components
       });
     } catch (error) {
-      logger.error("Error al procesar la paginación de /infractions.", error);
+      logger.error("Error processing pagination of /infractions.", error);
     }
   });
 

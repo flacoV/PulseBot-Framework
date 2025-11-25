@@ -27,8 +27,8 @@ interface LogModerationActionOptions {
 }
 
 /**
- * Envía un log de moderación al canal configurado.
- * Si no hay canal configurado o hay un error, registra en el logger pero no falla.
+ * Sends a moderation log to the configured channel.
+ * If there is no configured channel or an error, logs to the logger but does not fail.
  */
 export const logModerationAction = async (options: LogModerationActionOptions): Promise<void> => {
   const { guild, actionType, caseId, targetUser, moderator, reason, evidenceUrls, durationMs, expiresAt, metadata } =
@@ -39,7 +39,7 @@ export const logModerationAction = async (options: LogModerationActionOptions): 
     const logChannelId = moderationConfig?.logChannelId;
 
     if (!logChannelId) {
-      // No hay canal configurado, no es un error crítico
+      // No configured channel, not a critical error
       return;
     }
 
@@ -47,28 +47,28 @@ export const logModerationAction = async (options: LogModerationActionOptions): 
 
     if (!channel) {
       logger.warn(
-        `El canal de logs de moderación (${logChannelId}) no existe o no es accesible en el servidor ${guild.id}.`
+        `The moderation log channel (${logChannelId}) does not exist or is not accessible in the server ${guild.id}.`
       );
       return;
     }
 
     if (!channel.isTextBased() || channel.isDMBased()) {
       logger.warn(
-        `El canal de logs de moderación (${logChannelId}) no es un canal de texto válido en el servidor ${guild.id}.`
+        `The moderation log channel (${logChannelId}) is not a valid text channel in the server ${guild.id}.`
       );
       return;
     }
 
-    // Verificar permisos del bot
+    // Verify bot permissions
     const me = await guild.members.fetchMe();
     if (!channel.permissionsFor(me)?.has(["ViewChannel", "SendMessages", "EmbedLinks"])) {
       logger.warn(
-        `El bot no tiene permisos suficientes en el canal de logs (${logChannelId}) del servidor ${guild.id}.`
+        `The bot does not have sufficient permissions in the moderation log channel (${logChannelId}) in the server ${guild.id}.`
       );
       return;
     }
 
-    // Mapeo de tipos de acción a colores y emojis
+    // Mapping of action types to colors and emojis
     const actionConfig: Record<
       ModerationActionType,
       { color: number; emoji: string; title: string; description: string }
@@ -76,90 +76,90 @@ export const logModerationAction = async (options: LogModerationActionOptions): 
       warn: {
         color: Colors.Yellow,
         emoji: "🔔",
-        title: "Advertencia Registrada",
-        description: `Se registró una advertencia para ${targetUser.tag}`
+        title: "Warning Registered",
+        description: `A warning was registered for ${targetUser.tag}`
       },
       mute: {
         color: Colors.Orange,
         emoji: "🔇",
-        title: "Miembro Silenciado",
-        description: `${targetUser.tag} fue silenciado`
+        title: "Member Muted",
+        description: `${targetUser.tag} was muted`
       },
       unmute: {
         color: Colors.Green,
         emoji: "🔊",
-        title: "Mute Removido",
-        description: `Se removió el mute de ${targetUser.tag}`
+        title: "Mute Removed",
+        description: `The mute was removed from ${targetUser.tag}`
       },
       kick: {
-        color: Colors.Red,
+        color: Colors.Purple,
         emoji: "👋",
-        title: "Miembro Expulsado",
-        description: `${targetUser.tag} fue expulsado del servidor`
+        title: "Member Kicked",
+        description: `${targetUser.tag} was kicked from the server`
       },
       ban: {
         color: Colors.DarkRed,
         emoji: "🔨",
-        title: "Miembro Baneado",
-        description: `${targetUser.tag} fue baneado del servidor`
+        title: "Member Banned",
+        description: `${targetUser.tag} was banned from the server`
       },
       unban: {
         color: Colors.Green,
         emoji: "✅",
-        title: "Miembro Desbaneado",
-        description: `${targetUser.tag} fue desbaneado del servidor`
+        title: "Member Unbanned",
+        description: `${targetUser.tag} was unbanned from the server`
       },
       note: {
         color: Colors.Blue,
         emoji: "📝",
-        title: "Nota Registrada",
-        description: `Se registró una nota para ${targetUser.tag}`
+        title: "Note Registered",
+        description: `A note was registered for ${targetUser.tag}`
       }
     };
 
-    // Detectar si es un reporte
+    // Detect if it is a report
     const isReport = metadata?.reportType === "user_report";
 
-    // Si es un reporte, usar configuración especial
+    // If it is a report, use special configuration
     if (isReport && actionType === "note") {
       const reportConfig = {
         color: Colors.Red,
         emoji: "🚨",
-        title: "Reporte de Usuario",
-        description: `Se recibió un reporte sobre ${targetUser.tag}`
+        title: "User Report",
+        description: `A user report was received about ${targetUser.tag}`
       };
 
       const embed = createBaseEmbed({
         title: `${reportConfig.emoji} ${reportConfig.title}`,
         description: reportConfig.description,
         color: reportConfig.color,
-        footerText: `Caso #${caseId} · ID: ${targetUser.id}`
+        footerText: `Case #${caseId} · ID: ${targetUser.id}`
       }).addFields(
         {
-          name: "Reportante",
+          name: "Reporter",
           value: `<@${moderator.id}> (${moderator.tag})`,
           inline: true
         },
         {
-          name: "Reportado",
+          name: "Reported",
           value: `<@${targetUser.id}> (${targetUser.tag})`,
           inline: true
         },
         {
-          name: "Motivo del Reporte",
-          value: reason.replace(/^\[REPORTE\]\s*/, "") || "No especificado"
+          name: "Report Reason",
+          value: reason.replace(/^\[REPORT\]\s*/, "") || "Not specified"
         }
       );
 
       if (evidenceUrls && evidenceUrls.length > 0) {
         embed.addFields({
-          name: "Evidencia",
+          name: "Evidence",
           value: evidenceUrls.map((url, index) => `${index + 1}. ${url}`).join("\n")
         });
       }
 
       embed.addFields({
-        name: "Timestamp",
+        name: "Timestamp", // TODO: Add localization
         value: `<t:${Math.floor(Date.now() / 1000)}:F>`,
         inline: true
       });
@@ -173,28 +173,28 @@ export const logModerationAction = async (options: LogModerationActionOptions): 
       title: `${config.emoji} ${config.title}`,
       description: config.description,
       color: config.color,
-      footerText: `Caso #${caseId} · ID: ${targetUser.id}`
+      footerText: `Case #${caseId} · ID: ${targetUser.id}`
     }).addFields(
       {
-        name: "Moderador",
+        name: "Moderator",
         value: `<@${moderator.id}> (${moderator.tag})`,
         inline: true
       },
       {
-        name: "Miembro",
+        name: "Member",
         value: `<@${targetUser.id}> (${targetUser.tag})`,
         inline: true
       },
       {
-        name: "Motivo",
-        value: reason || "No especificado"
+        name: "Reason",
+        value: reason || "Not specified"
       }
     );
 
-    // Añadir información adicional según el tipo de acción
+    // Add additional information according to the action type
     if (durationMs && (actionType === "mute" || actionType === "ban")) {
       embed.addFields({
-        name: "Duración",
+        name: "Duration",
         value: formatDuration(durationMs),
         inline: true
       });
@@ -202,7 +202,7 @@ export const logModerationAction = async (options: LogModerationActionOptions): 
 
     if (expiresAt && (actionType === "mute" || actionType === "ban")) {
       embed.addFields({
-        name: "Expira",
+        name: "Expires",
         value: `<t:${Math.floor(expiresAt.getTime() / 1000)}:R>`,
         inline: true
       });
@@ -210,16 +210,16 @@ export const logModerationAction = async (options: LogModerationActionOptions): 
 
     if (evidenceUrls && evidenceUrls.length > 0) {
       embed.addFields({
-        name: "Evidencia",
+        name: "Evidence",
         value: evidenceUrls.map((url, index) => `${index + 1}. ${url}`).join("\n")
       });
     }
 
-    // Añadir metadata si existe información adicional relevante
+    // Add metadata if there is additional relevant information
     if (metadata?.automated) {
       embed.addFields({
-        name: "Tipo",
-        value: "Automático",
+        name: "Type",
+        value: "Automatic",
         inline: true
       });
     }
@@ -232,8 +232,8 @@ export const logModerationAction = async (options: LogModerationActionOptions): 
 
     await channel.send({ embeds: [embed] });
   } catch (error) {
-    // No queremos que un error en el logging rompa el flujo de moderación
-    logger.error(`Error al enviar log de moderación en el servidor ${guild.id}:`, error);
+    // We don't want an error in the logging to break the moderation flow
+    logger.error(`Error sending moderation log in the server ${guild.id}:`, error);
   }
 };
 

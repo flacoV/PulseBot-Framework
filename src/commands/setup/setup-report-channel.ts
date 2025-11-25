@@ -16,27 +16,27 @@ import { logger } from "../../utils/logger.js";
 
 const builder = new SlashCommandBuilder()
   .setName("setup-report-channel")
-  .setDescription("Configura el canal donde los usuarios pueden reportar a otros miembros.")
+  .setDescription("Configures the channel where users can report other members.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addChannelOption((option) =>
     option
-      .setName("canal")
-      .setDescription("Canal donde se publicará el embed de reportes.")
+      .setName("channel")
+      .setDescription("Channel where the report embed will be posted.")
       .addChannelTypes(ChannelType.GuildText)
       .setRequired(true)
   )
   .addStringOption((option) =>
     option
-      .setName("titulo")
-      .setDescription("Título del embed de reportes (opcional).")
+      .setName("title")
+      .setDescription("Title of the report embed (optional).")
       .setMaxLength(256)
       .setRequired(false)
   )
   .addStringOption((option) =>
     option
-      .setName("descripcion")
-      .setDescription("Descripción del embed de reportes (opcional).")
+      .setName("description")
+      .setDescription("Description of the report embed (optional).")
       .setMaxLength(2000)
       .setRequired(false)
   );
@@ -45,7 +45,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   try {
     if (!interaction.inGuild() || !interaction.guild) {
       await interaction.reply({
-        content: "Este comando solo puede ejecutarse dentro de un servidor.",
+        content: "This command can only be executed within a server.",
         ephemeral: true
       });
       return;
@@ -53,11 +53,11 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
     await interaction.deferReply({ ephemeral: true });
 
-  const selectedChannel = interaction.options.getChannel("canal", true, [ChannelType.GuildText]);
-  const title = interaction.options.getString("titulo") ?? "📢 Sistema de Reportes";
+    const selectedChannel = interaction.options.getChannel("channel", true, [ChannelType.GuildText]);
+  const title = interaction.options.getString("title") ?? "📢 Report System";
   const description =
-    interaction.options.getString("descripcion") ??
-    "Si encuentras a un miembro que está violando las reglas del servidor, puedes reportarlo usando el botón de abajo.\n\n**¿Qué hacer?**\n1. Haz clic en el botón \"Reportar Usuario\"\n2. Completa el formulario con la información solicitada\n3. El equipo de moderación revisará tu reporte";
+    interaction.options.getString("description") ??
+    "If you find a member that is violating the server's rules, you can report them using the button below.\n\n**What to do?**\n1. Click the \"Report User\" button\n2. Complete the form with the requested information\n3. The moderation team will review your report";
 
   const channel = (await interaction.guild.channels
     .fetch(selectedChannel.id)
@@ -65,20 +65,20 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!channel) {
     await interaction.editReply({
-      content: "No pude encontrar ese canal. Intenta nuevamente.",
+      content: "I was unable to find that channel. Try again.",
       embeds: []
     });
     return;
   }
 
-  // Verificar permisos del bot en el canal
+  // Verify bot permissions in the channel
   const me = await interaction.guild.members.fetchMe();
   const botPermissions = channel.permissionsFor(me);
 
   if (!botPermissions?.has(["ViewChannel", "SendMessages", "EmbedLinks", "UseExternalEmojis"])) {
     await interaction.editReply({
       content:
-        "El bot no tiene permisos suficientes en ese canal. Necesita: Ver Canal, Enviar Mensajes, Enviar Embeds y Usar Emojis Externos.",
+        "The bot does not have sufficient permissions in that channel. It needs: View Channel, Send Messages, Send Embeds and Use External Emojis.",
       embeds: []
     });
     return;
@@ -90,19 +90,19 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     description,
     color: 0xff4444 // Rojo para reportes
   }).addFields({
-    name: "⚠️ Importante",
-    value: "Solo reporta comportamientos que violen las reglas del servidor. Los reportes falsos pueden resultar en acciones disciplinarias."
+    name: "⚠️ Important",
+    value: "Only report behaviors that violate the server's rules. False reports can result in disciplinary actions."
   });
 
   const button = new ButtonBuilder()
     .setCustomId("report_user_button")
-    .setLabel("Reportar Usuario")
+    .setLabel("Report User")
     .setStyle(ButtonStyle.Danger)
     .setEmoji("🚨");
 
   const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 
-  // Intentar actualizar el mensaje existente si existe
+  // Try to update the existing message if it exists
   const moderationConfig = await configurationService.getModerationConfig(interaction.guildId);
   if (moderationConfig?.reportMessageId && moderationConfig?.reportChannelId === channel.id) {
     try {
@@ -113,7 +113,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
       });
 
       await interaction.editReply({
-        content: `El embed de reportes ha sido actualizado en ${channel}.`,
+        content: `The report embed has been updated in ${channel}.`,
         embeds: []
       });
       return;
@@ -135,35 +135,35 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   });
 
   const successEmbed = createBaseEmbed({
-    title: "Canal de Reportes Configurado",
-    description: `El sistema de reportes ha sido configurado en ${channel}.`,
-    footerText: "Los usuarios podrán reportar miembros usando el botón del embed."
+    title: "Report Channel Configured",
+    description: `The report system has been configured in ${channel}.`,
+    footerText: "Users will be able to report members using the embed button."
   }).addFields({
-    name: "Canal",
+    name: "Channel",
     value: `${channel} (${channel.id})`
   });
 
     await interaction.editReply({
-      content: "Configuración guardada correctamente.",
+      content: "Configuration saved successfully.",
       embeds: [successEmbed]
     });
   } catch (error) {
-    logger.error("Error en setup-report-channel:", error);
+    logger.error("Error in setup-report-channel:", error);
     
     try {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({
-          content: "Ocurrió un error al configurar el canal de reportes. Por favor, intenta nuevamente.",
+          content: "An error occurred while configuring the report channel. Please try again.",
           embeds: []
         });
       } else {
         await interaction.reply({
-          content: "Ocurrió un error al configurar el canal de reportes. Por favor, intenta nuevamente.",
+          content: "An error occurred while configuring the report channel. Please try again.",
           ephemeral: true
         });
       }
     } catch (replyError) {
-      logger.error("Error al enviar mensaje de error en setup-report-channel:", replyError);
+      logger.error("Error sending error message in setup-report-channel:", replyError);
     }
   }
 };

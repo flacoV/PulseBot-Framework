@@ -138,7 +138,7 @@ export class ConfigurationService {
       };
     } catch (error) {
       logger.warn(
-        `No se pudo leer la configuración en ${this.configPath}. Se usará la configuración por defecto.`,
+        `Could not read the configuration in ${this.configPath}. The default configuration will be used.`,
         error
       );
       this.configuration = structuredClone(DEFAULT_CONFIGURATION);

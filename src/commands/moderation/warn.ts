@@ -32,44 +32,44 @@ const ensureHierarchy = (moderator: GuildMember, target?: GuildMember | null) =>
 
 const builder = new SlashCommandBuilder()
   .setName("warn")
-  .setDescription("Registra una advertencia en el historial de un miembro.")
+  .setDescription("Registers a warning in the history of a member.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
   .addUserOption((option) =>
-    option.setName("usuario").setDescription("Miembro a advertir.").setRequired(true)
+    option.setName("user").setDescription("Member to warn.").setRequired(true)
   )
   .addStringOption((option) =>
     option
-      .setName("razon")
-      .setDescription("Motivo de la advertencia.")
+      .setName("reason")
+      .setDescription("Reason for the warning.")
       .setMinLength(3)
       .setMaxLength(512)
       .setRequired(true)
   )
   .addStringOption((option) =>
     option
-      .setName("evidencia")
-      .setDescription("URLs o referencias, separadas por espacios o comas (máximo 5).")
+      .setName("evidence")
+      .setDescription("URLs or references, separated by spaces or commas (maximum 5).")
       .setRequired(false)
   );
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild() || !interaction.guild) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       ephemeral: true
     });
     return;
   }
 
   const guild = interaction.guild;
-  const targetUser = interaction.options.getUser("usuario", true);
-  const reason = interaction.options.getString("razon", true).trim();
-  const evidence = formatEvidence(interaction.options.getString("evidencia"));
+  const targetUser = interaction.options.getUser("user", true);
+  const reason = interaction.options.getString("reason", true).trim();
+  const evidence = formatEvidence(interaction.options.getString("evidence"));
 
   if (targetUser.bot) {
     await interaction.reply({
-      content: "No puedes advertir a un bot.",
+      content: "You cannot warn a bot.",
       ephemeral: true
     });
     return;
@@ -81,7 +81,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!ensureHierarchy(moderatorMember, targetMember)) {
     await interaction.reply({
       content:
-        "No puedes advertir a este miembro. Asegúrate de que tu rol sea superior y que no seas tú mismo.",
+        "You cannot warn this member. Make sure your role is higher and you are not yourself.",
       ephemeral: true
     });
     return;
@@ -99,23 +99,23 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   const stats = await getUserStats(guild.id, targetUser.id);
 
   const embed = createBaseEmbed({
-    title: `Advertencia #${moderationCase.caseId}`,
-    description: `Se registró una advertencia para ${targetUser}.\n> ${reason}`,
-    footerText: "Usa /infractions para revisar el historial completo."
+    title: `Warning #${moderationCase.caseId}`,
+    description: `A warning was registered for ${targetUser}.\n> ${reason}`,
+    footerText: "Use /infractions to review the full history."
   })
     .addFields(
       {
-        name: "Moderador",
+        name: "Moderator",
         value: `<@${interaction.user.id}>`,
         inline: true
       },
       {
-        name: "Miembro",
+        name: "Member",
         value: `<@${targetUser.id}>`,
         inline: true
       },
       {
-        name: "Total de advertencias",
+        name: "Total warnings",
         value: `${stats.typeCounts.warn ?? 0}`,
         inline: true
       }
@@ -123,14 +123,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (evidence.length) {
     embed.addFields({
-      name: "Evidencia",
+      name: "Evidence",
       value: evidence.map((item, index) => `${index + 1}. ${item}`).join("\n")
     });
   }
 
   if (stats.lastAction) {
     embed.addFields({
-      name: "Última acción registrada",
+      name: "Last action registered",
       value: `#${stats.lastAction.caseId} · ${stats.lastAction.type} · <t:${Math.floor(
         stats.lastAction.createdAt.getTime() / 1000
       )}:R>`
@@ -140,7 +140,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   await interaction.reply({
     embeds: [embed],
     ephemeral: true,
-    content: "Advertencia registrada correctamente."
+    content: "Warning registered successfully."
   });
 
   // Enviar DM con invite (sin bloquear la respuesta)
@@ -156,7 +156,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
       })
     )
     .catch((error) => {
-      logger.debug("Error al obtener invite o enviar DM en warn:", error);
+      logger.debug("Error getting invite or sending DM in warn:", error);
     });
 
   // Enviar log al canal de moderación

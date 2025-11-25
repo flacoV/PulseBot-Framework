@@ -30,7 +30,7 @@ moderationCaseSchema.index({ guildId: 1, caseId: -1 }, { unique: true });
 
 export type ModerationCaseDocument = InferSchemaType<typeof moderationCaseSchema>;
 
-// Evitar recompilar el modelo si ya existe (útil para hot-reload)
+// Avoid recompiling the model if it already exists (useful for hot-reload)
 export const ModerationCaseModel: Model<ModerationCaseDocument> =
   (mongoose.models["ModerationCase"] as Model<ModerationCaseDocument>) ??
   model<ModerationCaseDocument>("ModerationCase", moderationCaseSchema);

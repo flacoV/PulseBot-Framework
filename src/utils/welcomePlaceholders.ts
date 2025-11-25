@@ -41,7 +41,7 @@ export const renderWelcomeTemplate = (template: string, context: WelcomePlacehol
   });
 
 export const DEFAULT_WELCOME_TEMPLATE =
-  "¡Bienvenid@ {{userMention}}! Échale un vistazo a las reglas y disfruta tu estancia en {{guildName}}.";
+  "Welcome {{userMention}}! Take a look at the rules and enjoy your stay in {{guildName}}.";
 
 const buildUserTag = (user: User) =>
   user.discriminator && user.discriminator !== "0"

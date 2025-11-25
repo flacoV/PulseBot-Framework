@@ -12,13 +12,13 @@ import { ensureStaffAccess } from "../../utils/accessControl.js";
 
 const builder = new SlashCommandBuilder()
   .setName("setup-report-private-category")
-  .setDescription("Configura la categoría donde se crearán los canales privados de reportes.")
+  .setDescription("Configures the category where private report channels will be created.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addChannelOption((option) =>
     option
-      .setName("categoria")
-      .setDescription("Categoría donde se crearán los canales privados de reportes.")
+      .setName("category")
+      .setDescription("Category where private report channels will be created.")
       .addChannelTypes(ChannelType.GuildCategory)
       .setRequired(true)
   );
@@ -30,17 +30,17 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!interaction.inGuild()) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       ephemeral: true
     });
     return;
   }
 
-  const category = interaction.options.getChannel("categoria", true, [ChannelType.GuildCategory]);
+  const category = interaction.options.getChannel("category", true, [ChannelType.GuildCategory]);
 
   if (!category) {
     await interaction.reply({
-      content: "Debes seleccionar una categoría válida.",
+      content: "You must select a valid category.",
       ephemeral: true
     });
     return;
@@ -52,9 +52,9 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
 
     const embed = createBaseEmbed({
-      title: "✅ Categoría de Canales Privados Configurada",
-      description: `Los canales privados de reportes se crearán en la categoría **${category.name}**.`,
-      footerText: `Categoría ID: ${category.id}`
+      title: "✅ Private Channel Category Configured",
+      description: `Private report channels will be created in the category **${category.name}**.`,
+      footerText: `Category ID: ${category.id}`
     });
 
     await interaction.reply({
@@ -63,9 +63,9 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
   } catch (error) {
     const { logger } = await import("../../utils/logger.js");
-    logger.error("Error al configurar la categoría de canales privados:", error);
+    logger.error("Error configuring the private channel category:", error);
     await interaction.reply({
-      content: "Ocurrió un error al configurar la categoría. Por favor, intenta nuevamente.",
+      content: "An error occurred while configuring the category. Please try again.",
       ephemeral: true
     });
   }

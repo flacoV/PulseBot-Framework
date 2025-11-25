@@ -4,7 +4,7 @@ export const getEnvVar = (key: string): string => {
   const value = process.env[key];
 
   if (!value || value.trim().length === 0) {
-    const message = `La variable de entorno ${key} es obligatoria y no está definida.`;
+    const message = `The environment variable ${key} is required and not defined.`;
     logger.error(message);
     throw new Error(message);
   }

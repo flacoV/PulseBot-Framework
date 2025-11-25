@@ -3,16 +3,16 @@ import type { Guild } from "discord.js";
 import { logger } from "./logger.js";
 
 /**
- * Obtiene o crea una invitación permanente para el servidor.
- * Intenta encontrar una invitación existente sin expiración, si no existe, crea una nueva.
+ * Gets or creates a permanent invite for the server.
+ * Tries to find an existing invite without expiration, if not, creates a new one.
  */
 export const getOrCreatePermanentInvite = async (guild: Guild): Promise<string | null> => {
   try {
-    // Intentar obtener invitaciones existentes
+    // Try to get existing invites
     const invites = await guild.invites.fetch().catch(() => null);
 
     if (invites) {
-      // Buscar una invitación permanente (sin expiración y sin límite de usos)
+      // Find a permanent invite (without expiration and without limit of uses)
       const permanentInvite = invites.find(
         (invite) => invite.maxAge === 0 && invite.maxUses === 0 && !invite.temporary
       );
@@ -22,8 +22,8 @@ export const getOrCreatePermanentInvite = async (guild: Guild): Promise<string |
       }
     }
 
-    // Si no hay invitación permanente, intentar crear una
-    // Buscar un canal de texto donde el bot pueda crear invitaciones
+    // If there is no permanent invite, try to create one
+    // Find a text channel where the bot can create invites
     const textChannels = guild.channels.cache.filter(
       (channel) => channel.isTextBased() && !channel.isDMBased() && !channel.isThread()
     );
@@ -35,8 +35,8 @@ export const getOrCreatePermanentInvite = async (guild: Guild): Promise<string |
 
         if (permissions?.has(["CreateInstantInvite", "ViewChannel"])) {
           const invite = await channel.createInvite({
-            maxAge: 0, // Sin expiración
-            maxUses: 0, // Sin límite de usos
+            maxAge: 0, // Without expiration
+            maxUses: 0, // Without limit of uses
             temporary: false,
             unique: false
           });
@@ -44,15 +44,15 @@ export const getOrCreatePermanentInvite = async (guild: Guild): Promise<string |
           return `https://discord.gg/${invite.code}`;
         }
       } catch {
-        // Continuar con el siguiente canal
+        // Continue with the next channel
         continue;
       }
     }
 
-    logger.warn(`No se pudo crear una invitación permanente para el servidor ${guild.id}`);
+    logger.warn(`Could not create a permanent invite for the server ${guild.id}`);
     return null;
   } catch (error) {
-    logger.error(`Error al obtener/crear invitación para el servidor ${guild.id}:`, error);
+    logger.error(`Error getting/creating invite for the server ${guild.id}:`, error);
     return null;
   }
 };

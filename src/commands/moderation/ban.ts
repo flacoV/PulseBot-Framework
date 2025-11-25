@@ -34,37 +34,37 @@ const ensureHierarchy = (moderator: GuildMember, target?: GuildMember | null) =>
 
 const builder = new SlashCommandBuilder()
   .setName("ban")
-  .setDescription("Banea a un miembro del servidor y registra la acción.")
+  .setDescription("Ban a member of the server and record the action.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
   .addUserOption((option) =>
-    option.setName("usuario").setDescription("Miembro a banear.").setRequired(true)
+    option.setName("user").setDescription("User to ban.").setRequired(true)
   )
   .addStringOption((option) =>
     option
-      .setName("razon")
-      .setDescription("Motivo del ban.")
+      .setName("reason")
+      .setDescription("Reason for the ban.")
       .setMinLength(3)
       .setMaxLength(512)
       .setRequired(true)
   )
   .addStringOption((option) =>
     option
-      .setName("duracion")
-      .setDescription("Opcional: duración del ban (ej: 7d, 30d). Solo informativa por ahora.")
+      .setName("duration")
+      .setDescription("Optional: duration of the ban (e.g: 7d, 30d).")
       .setRequired(false)
   )
   .addStringOption((option) =>
     option
-      .setName("evidencia")
-      .setDescription("URLs o referencias, separadas por espacios o comas (máximo 5).")
+      .setName("evidence")
+      .setDescription("URLs or references, separated by spaces or commas (maximum 5).")
       .setRequired(false)
   );
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild() || !interaction.guild) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       ephemeral: true
     });
     return;
@@ -73,14 +73,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   await interaction.deferReply({ ephemeral: true });
 
   const guild = interaction.guild;
-  const targetUser = interaction.options.getUser("usuario", true);
-  const reason = interaction.options.getString("razon", true).trim();
-  const durationInput = interaction.options.getString("duracion");
-  const evidence = formatEvidence(interaction.options.getString("evidencia"));
+  const targetUser = interaction.options.getUser("user", true);
+  const reason = interaction.options.getString("reason", true).trim();
+  const durationInput = interaction.options.getString("duration");
+  const evidence = formatEvidence(interaction.options.getString("evidence"));
 
   if (targetUser.bot) {
     await interaction.editReply({
-      content: "No puedes banear a un bot con este comando.",
+      content: "You cannot ban a bot with this command.",
       embeds: []
     });
     return;
@@ -91,7 +91,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (targetMember && !ensureHierarchy(moderatorMember, targetMember)) {
     await interaction.editReply({
-      content: "No puedes banear a este miembro. Verifica la jerarquía de roles.",
+      content: "You cannot ban this member. Verify the role hierarchy.",
       embeds: []
     });
     return;
@@ -104,7 +104,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     const parsed = parseDurationInput(durationInput);
     if (!parsed) {
       await interaction.editReply({
-        content: "Duración inválida. Usa formatos como 7d, 30d (o 1d, 12h, etc.).",
+        content: "Invalid duration. Use formats like 7d, 30d (or 1d, 12h, etc.).",
         embeds: []
       });
       return;
@@ -128,43 +128,43 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   const moderationCase = await createModerationCase(payload);
 
   const embed = createBaseEmbed({
-    title: `Ban aplicado: caso #${moderationCase.caseId}`,
-    description: `${targetUser.tag} ha sido baneado del servidor.`,
+    title: `Ban applied: case #${moderationCase.caseId}`,
+    description: `${targetUser.tag} has been banned from the server.`,
     footerText: durationMs
-      ? "El ban es temporal de acuerdo a la duración indicada (no se desbanea automáticamente todavía)."
-      : "Ban permanente salvo que se desbanee manualmente."
+      ? "The ban is temporary according to the duration indicated."
+      : "Ban with no duration is permanent unless manually unbanned."
   }).addFields(
     {
-      name: "Moderador",
+      name: "Moderator",
       value: `<@${interaction.user.id}>`,
       inline: true
     },
     {
-      name: "Miembro",
+      name: "Member",
       value: `${targetUser.tag} (${targetUser.id})`,
       inline: true
     },
     {
-      name: "Duración",
-      value: durationMs ? formatDuration(durationMs) : "Indefinido / permanente",
+      name: "Duration",
+      value: durationMs ? formatDuration(durationMs) : "Indefinite / permanent",
       inline: true
     },
     {
-      name: "Motivo",
+      name: "Reason",
       value: reason
     }
   );
 
   if (evidence.length) {
     embed.addFields({
-      name: "Evidencia",
+      name: "Evidence",
       value: evidence.map((item, index) => `${index + 1}. ${item}`).join("\n")
     });
   }
 
   // Aplicamos el ban primero
   await guild.members.ban(targetUser.id, {
-    reason: `Ban por ${interaction.user.tag}: ${reason}`
+    reason: `Ban by ${interaction.user.tag}: ${reason}`
   });
 
   if (expiresAt && durationMs) {
@@ -177,14 +177,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         const isStillBanned = bans?.has(targetUser.id);
         if (!isStillBanned) return;
 
-        await freshGuild.members.unban(targetUser.id, "Ban expirado automáticamente.");
+        await freshGuild.members.unban(targetUser.id, "Ban expired automatically.");
 
         const unbanCase = await createModerationCase({
           guildId: freshGuild.id,
           userId: targetUser.id,
           moderatorId: interaction.client.user?.id ?? "system",
           type: "unban",
-          reason: "Ban expirado automáticamente.",
+          reason: "Ban expired automatically.",
           metadata: {
             automated: true
           }
@@ -196,7 +196,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           guildName: freshGuild.name,
           type: "unban",
           caseId: unbanCase.caseId,
-          reason: "Ban expirado automáticamente.",
+          reason: "Ban expired automatically.",
           inviteUrl
         });
 
@@ -212,14 +212,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           },
           moderator: {
             id: interaction.client.user?.id ?? "system",
-            tag: interaction.client.user?.tag ?? "Sistema"
+            tag: interaction.client.user?.tag ?? "System"
           },
-          reason: "Ban expirado automáticamente.",
+          reason: "Ban expired automatically.",
           metadata: { automated: true }
         });
       } catch (error) {
         logger.error(
-          `Error al intentar remover automáticamente el ban de ${targetUser.id} en ${guild.id}`,
+          `Error trying to automatically remove the ban of ${targetUser.id} in ${guild.id}`,
           error
         );
       }
@@ -227,7 +227,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   }
 
   await interaction.editReply({
-    content: "Ban ejecutado correctamente.",
+    content: "Ban executed successfully.",
     embeds: [embed]
   });
 
@@ -254,7 +254,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
       }
     })
     .catch((error) => {
-      logger.debug("Error al obtener invite o enviar DM en ban:", error);
+      logger.debug("Error getting invite or sending DM in ban:", error);
     });
 
   // Enviar log al canal de moderación

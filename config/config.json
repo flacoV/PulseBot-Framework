@@ -2,8 +2,7 @@
   "welcome": {
     "1438281324480827513": {
       "channelId": "1438294217427386409",
-      "roleId": "1438284735557406902",
-      "message": "᲼᲼᲼᲼᲼⚡ **Access Granted** Welcome {{userMention}} to {{serverName}}! You’re now part of an advanced community of innovators — make sure to check out #rules and #introductions before diving in."
+      "roleId": "1438284735557406902"
     }
   },
   "moderation": {
@@ -11,7 +10,7 @@
       "muteRoleId": "1439311027719114783",
       "logChannelId": "1440000413205139586",
       "reportChannelId": "1440002352114569268",
-      "reportMessageId": "1440007285538820148",
+      "reportMessageId": "1443003437213290657",
       "reportLogChannelId": "1440009467726135327",
       "reportPrivateChannelCategoryId": "1440459422118973494"
     }
@@ -22,7 +21,7 @@
       "logChannelId": "1440513971235848202",
       "transcriptChannelId": "1440514109753004112",
       "panelChannelId": "1440513939485233265",
-      "panelMessageId": "1440514512188084365"
+      "panelMessageId": "1442999588888903893"
     }
   }
 }

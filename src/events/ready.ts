@@ -8,7 +8,7 @@ const event: EventModule<"ready"> = {
   name: "ready",
   once: true,
   execute: (client: Client<true>) => {
-    logger.info(`Bot conectado como ${client.user.tag}.`);
+    logger.info(`Bot connected as ${client.user.tag}.`);
 
     const activityType = getEnvVarOptional("BOT_ACTIVITY_TYPE", "Streaming") as keyof typeof ActivityType;
     const activityText = getEnvVarOptional("BOT_ACTIVITY_TEXT", "dev by @nopressure") ?? "dev by @nopressure";
@@ -17,7 +17,7 @@ const event: EventModule<"ready"> = {
 
     client.user.setActivity(activityText, { type });
 
-    logger.info(`Actividad configurada: ${activityType} ${activityText}`);
+    logger.info(`Activity configured: ${activityType} ${activityText}`);
   }
 };
 

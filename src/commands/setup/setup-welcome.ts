@@ -7,7 +7,7 @@ import {
 
 import { configurationService, type WelcomeConfig } from "../../services/configurationService.js";
 import type { Command } from "../../types/Command.js";
-import { createBaseEmbed } from "../../utils/embedBuilder.js";
+import { createWelcomeEmbed } from "../../utils/embedBuilder.js";
 import {
   DEFAULT_WELCOME_TEMPLATE,
   createPreviewContext,
@@ -31,27 +31,27 @@ const resolvePreviewDisplayName = (interaction: ChatInputCommandInteraction) => 
 
 const builder = new SlashCommandBuilder()
   .setName("setup-welcome")
-  .setDescription("Configura el sistema de bienvenida del servidor.")
+  .setDescription("Configure the server welcome system.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addChannelOption((option) =>
     option
-      .setName("canal")
-      .setDescription("Canal donde se publicarán las bienvenidas.")
+      .setName("channel")
+      .setDescription("Channel where the welcome messages will be sent.")
       .addChannelTypes(ChannelType.GuildText)
       .setRequired(true)
   )
   .addRoleOption((option) =>
     option
-      .setName("rol")
-      .setDescription("Rol opcional para asignar automáticamente a nuevos miembros.")
+      .setName("role")
+      .setDescription("Optional role to assign automatically to new members.")
       .setRequired(false)
   )
   .addStringOption((option) =>
     option
-      .setName("mensaje")
+      .setName("message")
       .setDescription(
-        "Mensaje de bienvenida. Placeholders: {{user}}, {{userMention}}, {{guildName}}."
+        "Welcome message. Placeholders: {{user}}, {{userMention}}, {{guildName}}."
       )
       .setMaxLength(500)
       .setRequired(false)
@@ -60,15 +60,15 @@ const builder = new SlashCommandBuilder()
 const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild()) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       ephemeral: true
     });
     return;
   }
 
-  const channel = interaction.options.getChannel("canal", true, [ChannelType.GuildText]);
-  const role = interaction.options.getRole("rol");
-  const message = interaction.options.getString("mensaje") ?? undefined;
+  const channel = interaction.options.getChannel("channel", true, [ChannelType.GuildText]);
+  const role = interaction.options.getRole("role");
+  const message = interaction.options.getString("message") ?? undefined;
   const template = message ?? DEFAULT_WELCOME_TEMPLATE;
 
   const welcomeConfig: WelcomeConfig = {
@@ -87,23 +87,23 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   const previewContext = createPreviewContext(
     interaction.user,
-    interaction.guild?.name ?? "tu servidor",
+    interaction.guild?.name ?? "your server",
     resolvePreviewDisplayName(interaction)
   );
 
-  const previewEmbed = createBaseEmbed({
-    title: "Vista previa de bienvenida",
+  const previewEmbed = createWelcomeEmbed({
+    userAvatarUrl: interaction.user.displayAvatarURL({ size: 512 }),
     description: renderWelcomeTemplate(template, previewContext),
-    footerText:
-      "Placeholders disponibles: {{user}}, {{userMention}}, {{userName}}, {{userDisplayName}}, {{userTag}}, {{guild}}, {{guildName}}, {{serverName}}."
+    guildName: previewContext.guildName,
+    ...(interaction.guild?.memberCount && { memberCount: interaction.guild.memberCount })
   });
 
   const channelMention = `<#${channel.id}>`;
   const roleMention = role ? `<@&${role.id}>` : null;
 
   await interaction.reply({
-    content: `Configuración actualizada. Las bienvenidas se enviarán en ${channelMention}${
-      roleMention ? ` y se asignará el rol ${roleMention}` : ""
+    content: `Configuration updated. Welcome messages will be sent in ${channelMention}${
+      roleMention ? ` and the role ${roleMention}` : ""
     }.`,
     embeds: [previewEmbed],
     ephemeral: true

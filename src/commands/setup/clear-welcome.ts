@@ -10,14 +10,14 @@ import type { Command } from "../../types/Command.js";
 
 const builder = new SlashCommandBuilder()
   .setName("clear-welcome")
-  .setDescription("Desactiva el sistema de bienvenida y elimina la configuración actual.")
+  .setDescription("Disable the welcome system and remove the current configuration.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild()) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       flags: MessageFlags.Ephemeral
     });
     return;
@@ -29,7 +29,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!existingConfig) {
     await interaction.editReply({
-      content: "No hay una configuración de bienvenida activa en este servidor.",
+      content: "There is no active welcome configuration on this server.",
     });
     return;
   }
@@ -37,7 +37,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   await configurationService.clearWelcomeConfig(interaction.guildId);
 
   await interaction.editReply({
-    content: "La configuración de bienvenida se ha eliminado. No se enviarán más mensajes automáticos."
+    content: "The welcome configuration has been removed. No more automatic messages will be sent."
   });
 };
 

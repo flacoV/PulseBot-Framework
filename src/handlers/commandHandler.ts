@@ -94,12 +94,12 @@ export const loadCommands = async (client: BotClient) => {
   }
 
   client.commands = commands;
-  logger.info(`Se cargaron ${commands.size} comandos.`);
+  logger.info(`Loaded ${commands.size} commands.`);
 };
 
 export const registerApplicationCommands = async (client: BotClient) => {
   if (client.commands.size === 0) {
-    logger.warn("No hay comandos para registrar en la API de Discord.");
+    logger.warn("No commands to register in the Discord API.");
     return;
   }
 
@@ -115,16 +115,16 @@ export const registerApplicationCommands = async (client: BotClient) => {
       await Promise.all(
         guildIds.map(async (guildId) => {
           await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: payload });
-          logger.info(`Comandos registrados en la guild ${guildId}.`);
+          logger.info(`Commands registered in the guild ${guildId}.`);
         })
       );
       return;
     }
 
     await rest.put(Routes.applicationCommands(clientId), { body: payload });
-    logger.info("Comandos registrados globalmente.");
+    logger.info("Commands registered globally.");
   } catch (error) {
-    logger.error("Error al registrar comandos en la API de Discord.", error);
+    logger.error("Error registering commands in the Discord API.", error);
     throw error;
   }
 };

@@ -12,17 +12,17 @@ import { createBaseEmbed } from "./embedBuilder.js";
 import { logger } from "./logger.js";
 
 /**
- * Crea el modal para dar un veredicto sobre un reporte.
+ * Creates the modal to give a verdict on a report.
  */
 export const createVerdictModal = (caseId: number) => {
   const modal = new ModalBuilder()
     .setCustomId(`verdict_modal_${caseId}`)
-    .setTitle(`Veredicto - Caso #${caseId}`);
+    .setTitle(`Verdict - Case #${caseId}`);
 
   const verdictInput = new TextInputBuilder()
     .setCustomId("verdict_text")
-    .setLabel("Veredicto")
-    .setPlaceholder("Describe el veredicto y las acciones tomadas (si las hay)...")
+    .setLabel("Verdict")
+    .setPlaceholder("Describe the verdict and the actions taken (if any)...")
     .setStyle(TextInputStyle.Paragraph)
     .setRequired(true)
     .setMinLength(10)
@@ -36,7 +36,7 @@ export const createVerdictModal = (caseId: number) => {
 };
 
 /**
- * Envía DMs a ambos usuarios (reportante y reportado) con el veredicto.
+ * Sends DMs to both users (reporter and reported) with the verdict.
  */
 export const sendVerdictDMs = async (
   guild: Guild,
@@ -47,56 +47,56 @@ export const sendVerdictDMs = async (
   moderator: User
 ): Promise<void> => {
   try {
-    // Obtener usuarios
+    // Get users
     const reporter = await guild.client.users.fetch(reporterId).catch(() => null);
     const reportedUser = await guild.client.users.fetch(reportedUserId).catch(() => null);
 
     const verdictEmbed = createBaseEmbed({
-      title: "⚖️ Veredicto del Reporte",
-      description: `Se ha emitido un veredicto para el caso #${caseId}`,
+      title: "⚖️ Verdict of the Report",
+      description: `A verdict has been issued for case #${caseId}`,
       color: 0x5865f2
     })
       .addFields({
-        name: "Veredicto",
+        name: "Verdict",
         value: verdict
       })
       .addFields({
-        name: "Moderador",
+        name: "Moderator",
         value: `${moderator.tag}`,
         inline: true
       })
       .addFields({
-        name: "Servidor",
+        name: "Server",
         value: guild.name,
         inline: true
       })
-      .setFooter({ text: `Caso #${caseId}` })
+      .setFooter({ text: `Case #${caseId}` })
       .setTimestamp();
 
-    // Enviar DM al reportante
+    // Send DM to the reporter
     if (reporter) {
       try {
         await reporter.send({ embeds: [verdictEmbed] });
       } catch (error) {
-        logger.warn(`No se pudo enviar DM al reportante ${reporterId}:`, error);
+        logger.warn(`Could not send DM to the reporter ${reporterId}:`, error);
       }
     }
 
-    // Enviar DM al reportado
+    // Send DM to the reported user
     if (reportedUser) {
       try {
         await reportedUser.send({ embeds: [verdictEmbed] });
       } catch (error) {
-        logger.warn(`No se pudo enviar DM al reportado ${reportedUserId}:`, error);
+        logger.warn(`Could not send DM to the reported user ${reportedUserId}:`, error);
       }
     }
   } catch (error) {
-    logger.error("Error al enviar DMs del veredicto:", error);
+    logger.error("Error sending verdict DMs:", error);
   }
 };
 
 /**
- * Actualiza el embed del reporte para mostrar que fue tomado por un moderador.
+ * Updates the report embed to show that it has been taken by a moderator.
  */
 export const updateReportEmbedTaken = async (
   message: Message,
@@ -108,35 +108,35 @@ export const updateReportEmbedTaken = async (
     if (!embed) return;
 
     const updatedEmbed = createBaseEmbed({
-      title: embed.title || "🚨 Reporte de Usuario",
+      title: embed.title || "🚨 User Report",
       description: embed.description || "",
       color: embed.color || 0xff0000,
-      footerText: embed.footer?.text || `Caso #${caseId}`
+      footerText: embed.footer?.text || `Case #${caseId}`
     });
 
-    // Copiar todos los campos existentes
+    // Copy all existing fields
     if (embed.fields) {
       for (const field of embed.fields) {
         updatedEmbed.addFields(field);
       }
     }
 
-    // Agregar campo de estado
+    // Add status field
     updatedEmbed.addFields({
-      name: "Estado",
-      value: `✅ Tomado por <@${moderator.id}> (${moderator.tag})`,
+      name: "Status",
+      value: `✅ Taken by <@${moderator.id}> (${moderator.tag})`,
       inline: true
     });
 
-    // Actualizar el mensaje
+    // Update the message
     await message.edit({ embeds: [updatedEmbed] });
   } catch (error) {
-    logger.error("Error al actualizar embed del reporte:", error);
+    logger.error("Error updating report embed:", error);
   }
 };
 
 /**
- * Actualiza el embed del reporte para mostrar el veredicto.
+ * Updates the report embed to show the verdict.
  */
 export const updateReportEmbedVerdict = async (
   message: Message,
@@ -149,36 +149,36 @@ export const updateReportEmbedVerdict = async (
     if (!embed) return;
 
     const updatedEmbed = createBaseEmbed({
-      title: embed.title || "🚨 Reporte de Usuario",
+      title: embed.title || "🚨 User Report",
       description: embed.description || "",
-      color: 0x00ff00, // Verde para veredicto dado
-      footerText: embed.footer?.text || `Caso #${caseId}`
+      color: 0x00ff00, // Green for verdict
+      footerText: embed.footer?.text || `Case #${caseId}`
     });
 
-    // Copiar todos los campos existentes
+    // Copy all existing fields
     if (embed.fields) {
       for (const field of embed.fields) {
         updatedEmbed.addFields(field);
       }
     }
 
-    // Agregar campo de veredicto
+    // Add verdict field
     updatedEmbed.addFields({
-      name: "Veredicto",
+      name: "Verdict",
       value: verdict,
       inline: false
     });
 
     updatedEmbed.addFields({
-      name: "Estado",
-      value: `✅ Veredicto dado por <@${moderator.id}> (${moderator.tag})`,
+      name: "Status",
+      value: `✅ Verdict given by <@${moderator.id}> (${moderator.tag})`,
       inline: true
     });
 
-    // Remover botones (el reporte ya fue resuelto)
+    // Remove buttons (the report has already been resolved)
     await message.edit({ embeds: [updatedEmbed], components: [] });
   } catch (error) {
-    logger.error("Error al actualizar embed del reporte con veredicto:", error);
+    logger.error("Error updating report embed with verdict:", error);
   }
 };
 

@@ -66,7 +66,7 @@ export const ensureStaffAccess = async (
 
   await interaction.reply({
     content:
-      "Este comando está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+      "This command is limited to authorized staff. Verify that you have the corresponding role or permission.",
     ephemeral: true
   });
 

@@ -24,16 +24,16 @@ const ensureHierarchy = (moderator: GuildMember, target?: GuildMember | null) =>
 
 const builder = new SlashCommandBuilder()
   .setName("unmute")
-  .setDescription("Quita el mute (rol configurado) de un miembro.")
+  .setDescription("Removes the mute (configured role) from a member.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
   .addUserOption((option) =>
-    option.setName("usuario").setDescription("Miembro a desmutear.").setRequired(true)
+    option.setName("user").setDescription("Member to unmute.").setRequired(true)
   )
   .addStringOption((option) =>
     option
-      .setName("razon")
-      .setDescription("Motivo de la remoción del mute.")
+      .setName("reason")
+      .setDescription("Reason for the removal of the mute.")
       .setMinLength(3)
       .setMaxLength(512)
       .setRequired(false)
@@ -42,7 +42,7 @@ const builder = new SlashCommandBuilder()
 const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild() || !interaction.guild) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       ephemeral: true
     });
     return;
@@ -51,7 +51,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   const moderationConfig = await configurationService.getModerationConfig(interaction.guildId);
   if (!moderationConfig?.muteRoleId) {
     await interaction.reply({
-      content: "Aún no se ha configurado el rol de mute. Usa /setup-mute-role antes de continuar.",
+      content: "The mute role has not been configured yet. Use /setup-mute-role before continuing.",
       ephemeral: true
     });
     return;
@@ -61,14 +61,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!muteRole) {
     await interaction.reply({
       content:
-        "El rol configurado para los mutes ya no existe. Configúralo nuevamente con /setup-mute-role.",
+        "The role configured for mutes no longer exists. Configure it again with /setup-mute-role.",
       ephemeral: true
     });
     return;
   }
 
-  const targetUser = interaction.options.getUser("usuario", true);
-  const reason = interaction.options.getString("razon")?.trim() ?? "Mute levantado manualmente.";
+  const targetUser = interaction.options.getUser("user", true);
+  const reason = interaction.options.getString("reason")?.trim() ?? "Mute removed manually.";
 
   const guild = interaction.guild;
   const moderatorMember = await guild.members.fetch(interaction.user.id);
@@ -76,7 +76,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!targetMember) {
     await interaction.reply({
-      content: "No pude obtener al miembro especificado. Inténtalo nuevamente.",
+      content: "I was unable to get the specified member. Try again.",
       ephemeral: true
     });
     return;
@@ -84,7 +84,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!ensureHierarchy(moderatorMember, targetMember)) {
     await interaction.reply({
-      content: "No puedes modificar a este miembro. Verifica la jerarquía de roles.",
+      content: "You cannot modify this member. Verify the role hierarchy.",
       ephemeral: true
     });
     return;
@@ -92,7 +92,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!targetMember.roles.cache.has(muteRole.id)) {
     await interaction.reply({
-      content: "El miembro no tiene el rol de mute aplicado.",
+      content: "The member does not have the mute role applied.",
       ephemeral: true
     });
     return;
@@ -100,7 +100,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   await targetMember.roles.remove(
     muteRole.id,
-    `Mute removido por ${interaction.user.tag}: ${reason}`
+    `Mute removed by ${interaction.user.tag}: ${reason}`
   );
 
   const moderationCase = await createModerationCase({
@@ -115,23 +115,23 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   });
 
   const embed = createBaseEmbed({
-    title: `Mute removido: caso #${moderationCase.caseId}`,
-    description: `${targetUser} ya puede hablar nuevamente.`,
-    footerText: "Revisa /infractions para ver el historial completo."
+    title: `Mute removed: case #${moderationCase.caseId}`,
+    description: `${targetUser} can now speak again.`,
+    footerText: "Check /infractions to see the full history."
   }).addFields(
     {
-      name: "Moderador",
+      name: "Moderator",
       value: `<@${interaction.user.id}>`,
       inline: true
     },
     {
-      name: "Motivo",
+      name: "Reason",
       value: reason
     }
   );
 
   await interaction.reply({
-    content: "Se removió el mute correctamente.",
+    content: "Mute removed successfully.",
     embeds: [embed],
     ephemeral: true
   });
@@ -149,7 +149,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
       })
     )
     .catch((error) => {
-      logger.debug("Error al obtener invite o enviar DM en unmute:", error);
+      logger.debug("Error getting invite or sending DM in unmute:", error);
     });
 
   // Enviar log al canal de moderación

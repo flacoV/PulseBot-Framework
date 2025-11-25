@@ -7,7 +7,7 @@ import {
 
 import { configurationService } from "../services/configurationService.js";
 import type { EventModule } from "../types/Event.js";
-import { createBaseEmbed } from "../utils/embedBuilder.js";
+import { createWelcomeEmbed } from "../utils/embedBuilder.js";
 import { logger } from "../utils/logger.js";
 import {
   DEFAULT_WELCOME_TEMPLATE,
@@ -73,7 +73,7 @@ const hasRecentWelcomeMessage = async (channel: TextChannel, memberId: string) =
     }
   } catch (error) {
     logger.warn(
-      `No se pudieron obtener mensajes recientes del canal ${channel.id} para aplicar la deduplicación.`,
+      `Could not get recent messages from channel ${channel.id} to apply deduplication.`,
       error
     );
   }
@@ -88,12 +88,12 @@ const event: EventModule<"guildMemberAdd"> = {
 
     if (hasRecentWelcome(botClient, member.guild.id, member.id)) {
       logger.debug(
-        `Se detectó una bienvenida duplicada para ${member.id} en ${member.guild.id}, se omitirá.`
+        `A duplicate welcome was detected for ${member.id} in ${member.guild.id}, it will be omitted.`
       );
       return;
     }
 
-    // ✅ Se marca antes del envío para evitar duplicados simultáneos
+    // ✅ Marked before sending to avoid simultaneous duplicates
     markRecentWelcome(botClient, member.guild.id, member.id);
 
     const config = await configurationService.getWelcomeConfig(member.guild.id);
@@ -104,7 +104,7 @@ const event: EventModule<"guildMemberAdd"> = {
 
       if (!channel || channel.type !== ChannelType.GuildText) {
         logger.warn(
-          `El canal configurado (${config.channelId}) no es válido para el servidor ${member.guild.id}.`
+          `The configured channel (${config.channelId}) is not valid for the server ${member.guild.id}.`
         );
         return;
       }
@@ -113,7 +113,7 @@ const event: EventModule<"guildMemberAdd"> = {
 
       if (await hasRecentWelcomeMessage(textChannel, member.id)) {
         logger.debug(
-          `Se detectó un mensaje de bienvenida reciente existente para ${member.id} en ${member.guild.id}, se omite el nuevo envío.`
+          `A recent welcome message already exists for ${member.id} in ${member.guild.id}, the new message will be omitted.`
         );
         return;
       }
@@ -122,10 +122,14 @@ const event: EventModule<"guildMemberAdd"> = {
       const descriptionTemplate = config.message ?? DEFAULT_WELCOME_TEMPLATE;
       const description = renderWelcomeTemplate(descriptionTemplate, context);
 
-      const embed = createBaseEmbed({
-        title: `᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼᲼¡Bienvenid@!`,
+      // Get the member count for the footer
+      const memberCount = member.guild.memberCount;
+
+      const embed = createWelcomeEmbed({
+        userAvatarUrl: member.user.displayAvatarURL({ size: 512 }),
         description,
-        thumbnailUrl: member.user.displayAvatarURL()
+        guildName: context.guildName,
+        memberCount
       });
 
       const mentionVariants = [`<@${member.id}>`, `<@!${member.id}>`];
@@ -145,13 +149,13 @@ const event: EventModule<"guildMemberAdd"> = {
           await member.roles.add(role);
         } else {
           logger.warn(
-            `El rol configurado (${config.roleId}) no existe en el servidor ${member.guild.id}.`
+            `The configured role (${config.roleId}) does not exist in the server ${member.guild.id}.`
           );
         }
       }
     } catch (error) {
       logger.error(
-        `Error al procesar la bienvenida para el usuario ${member.id} en ${member.guild.id}`,
+        `Error processing the welcome for user ${member.id} in ${member.guild.id}`,
         error
       );
     }

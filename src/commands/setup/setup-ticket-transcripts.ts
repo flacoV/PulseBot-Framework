@@ -12,13 +12,13 @@ import { ensureStaffAccess } from "../../utils/accessControl.js";
 
 const builder = new SlashCommandBuilder()
   .setName("setup-ticket-transcripts")
-  .setDescription("Configura el canal donde se guardarán los transcripts de tickets.")
+  .setDescription("Configure the channel where the ticket transcripts will be saved.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addChannelOption((option) =>
     option
-      .setName("canal")
-      .setDescription("Canal donde se guardarán los transcripts de tickets.")
+      .setName("channel")
+      .setDescription("Channel where the ticket transcripts will be saved.")
       .addChannelTypes(ChannelType.GuildText)
       .setRequired(true)
   );
@@ -30,17 +30,17 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!interaction.inGuild()) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       ephemeral: true
     });
     return;
   }
 
-  const channel = interaction.options.getChannel("canal", true, [ChannelType.GuildText]);
+  const channel = interaction.options.getChannel("channel", true, [ChannelType.GuildText]);
 
   if (!channel) {
     await interaction.reply({
-      content: "Debes seleccionar un canal válido.",
+      content: "You must select a valid channel.",
       ephemeral: true
     });
     return;
@@ -52,9 +52,9 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
 
     const embed = createBaseEmbed({
-      title: "✅ Canal de Transcripts Configurado",
-      description: `Los transcripts de tickets se guardarán en ${channel}.`,
-      footerText: `Canal ID: ${channel.id}`
+      title: "✅ Ticket Transcripts Configured",
+      description: `The ticket transcripts will be saved in ${channel}.`,
+      footerText: `Channel ID: ${channel.id}`
     });
 
     await interaction.reply({
@@ -63,9 +63,9 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
   } catch (error) {
     const { logger } = await import("../../utils/logger.js");
-    logger.error("Error al configurar el canal de transcripts:", error);
+    logger.error("Error configuring the channel for transcripts:", error);
     await interaction.reply({
-      content: "Ocurrió un error al configurar el canal. Por favor, intenta nuevamente.",
+      content: "An error occurred while configuring the channel for transcripts. Please try again.",
       ephemeral: true
     });
   }

@@ -12,7 +12,7 @@ const moderationCounterSchema = new Schema(
 
 export type ModerationCounterDocument = InferSchemaType<typeof moderationCounterSchema>;
 
-// Evitar recompilar el modelo si ya existe (útil para hot-reload)
+// Avoid recompiling the model if it already exists (useful for hot-reload)
 export const ModerationCounterModel: Model<ModerationCounterDocument> =
   (mongoose.models["ModerationCounter"] as Model<ModerationCounterDocument>) ??
   model<ModerationCounterDocument>("ModerationCounter", moderationCounterSchema);

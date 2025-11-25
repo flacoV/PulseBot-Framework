@@ -33,12 +33,12 @@ const bootstrap = async () => {
 
     const token = process.env.DISCORD_TOKEN;
     if (!token) {
-      throw new Error("DISCORD_TOKEN no definido. Revisa tu archivo .env.");
+      throw new Error("DISCORD_TOKEN not defined. Check your .env file.");
     }
 
     await client.login(token);
   } catch (error) {
-    logger.error("Error crítico durante el arranque del bot.", error);
+    logger.error("Critical error during bot startup.", error);
     process.exitCode = 1;
   }
 };

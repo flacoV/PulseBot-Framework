@@ -8,7 +8,7 @@ import { ensureStaffAccess, hasStaffAccess } from "../utils/accessControl.js";
 const ensureGuildContext = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild()) {
     await interaction.reply({
-      content: "Este comando solo puede usarse dentro de un servidor.",
+      content: "This command can only be used within a server.",
       ephemeral: true
     });
     return false;
@@ -25,7 +25,7 @@ const event: EventModule<"interactionCreate"> = {
       if (interaction.customId === "report_user_button") {
         if (!interaction.inGuild() || !interaction.guild) {
           await interaction.reply({
-            content: "Este botón solo puede usarse dentro de un servidor.",
+            content: "This button can only be used within a server.",
             ephemeral: true
           });
           return;
@@ -37,12 +37,12 @@ const event: EventModule<"interactionCreate"> = {
           const modal = createReportModal();
           await interaction.showModal(modal);
         } catch (error) {
-          logger.error("Error al mostrar el modal de reporte:", error);
+          logger.error("Error showing the report modal:", error);
           await interaction.reply({
-            content: "Ocurrió un error al abrir el formulario de reporte.",
+            content: "An error occurred while opening the report form.",
             ephemeral: true
           }).catch(() => {
-            // Si ya respondió, ignorar
+            // If already responded, ignore
           });
         }
         return;
@@ -52,18 +52,18 @@ const event: EventModule<"interactionCreate"> = {
       if (interaction.customId.startsWith("take_report_")) {
         if (!interaction.inGuild() || !interaction.guild) {
           await (interaction as any).reply({
-            content: "Este botón solo puede usarse dentro de un servidor.",
+            content: "This button can only be used within a server.",
             ephemeral: true
           });
           return;
         }
 
-        // Verificar que sea staff
+        // Verify that it is staff
         const hasAccess = hasStaffAccess(interaction as any);
         if (!hasAccess) {
           await (interaction as any).reply({
             content:
-              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+              "This button is limited to authorized staff. Verify that you have the corresponding role or permission.",
             ephemeral: true
           });
           return;
@@ -79,9 +79,9 @@ const event: EventModule<"interactionCreate"> = {
             await updateReportEmbedTaken(interaction.message, interaction.user, caseId);
           }
         } catch (error) {
-          logger.error("Error al tomar el reporte:", error);
+          logger.error("Error taking the report:", error);
           await interaction.followUp({
-            content: "Ocurrió un error al tomar el reporte.",
+            content: "An error occurred while taking the report.",
             ephemeral: true
           }).catch(() => {});
         }
@@ -92,18 +92,18 @@ const event: EventModule<"interactionCreate"> = {
       if (interaction.customId.startsWith("give_verdict_")) {
         if (!interaction.inGuild() || !interaction.guild) {
           await (interaction as any).reply({
-            content: "Este botón solo puede usarse dentro de un servidor.",
+            content: "This button can only be used within a server.",
             ephemeral: true
           });
           return;
         }
 
-        // Verificar que sea staff
+        // Verify that it is staff
         const hasAccess = hasStaffAccess(interaction as any);
         if (!hasAccess) {
           await (interaction as any).reply({
             content:
-              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+              "This button is limited to authorized staff. Verify that you have the corresponding role or permission.",
             ephemeral: true
           });
           return;
@@ -115,9 +115,9 @@ const event: EventModule<"interactionCreate"> = {
           const modal = createVerdictModal(caseId);
           await interaction.showModal(modal);
         } catch (error) {
-          logger.error("Error al mostrar el modal de veredicto:", error);
+          logger.error("Error showing the verdict modal:", error);
           await interaction.reply({
-            content: "Ocurrió un error al abrir el formulario de veredicto.",
+            content: "An error occurred while opening the verdict form.",
             ephemeral: true
           }).catch(() => {});
         }
@@ -128,18 +128,18 @@ const event: EventModule<"interactionCreate"> = {
       if (interaction.customId.startsWith("open_private_channel_")) {
         if (!interaction.inGuild() || !interaction.guild) {
           await (interaction as any).reply({
-            content: "Este botón solo puede usarse dentro de un servidor.",
+            content: "This button can only be used within a server.",
             ephemeral: true
           });
           return;
         }
 
-        // Verificar que sea staff
+        // Verify that it is staff
         const hasAccess = hasStaffAccess(interaction as any);
         if (!hasAccess) {
           await (interaction as any).reply({
             content:
-              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+              "This button is limited to authorized staff. Verify that you have the corresponding role or permission.",
             ephemeral: true
           });
           return;
@@ -150,32 +150,32 @@ const event: EventModule<"interactionCreate"> = {
         try {
           const caseId = parseInt(interaction.customId.replace("open_private_channel_", ""));
 
-          // Obtener información del reporte desde el embed
+          // Get the report information from the embed
           const embed = interaction.message.embeds[0];
           if (!embed || !embed.fields) {
             await interaction.followUp({
-              content: "No se pudo obtener la información del reporte.",
+              content: "Could not get the report information.",
               ephemeral: true
             }).catch(() => {});
             return;
           }
 
-          // Extraer IDs del reportante y reportado desde los campos del embed
+          // Extract IDs of the reporter and reported from the embed fields
           let reporterId: string | null = null;
           let reportedUserId: string | null = null;
           let reason = "";
           const evidenceUrls: string[] = [];
 
           for (const field of embed.fields) {
-            if (field.name === "Reportante") {
+            if (field.name === "Reporter") {
               const match = field.value?.match(/<@(\d+)>/);
               if (match && match[1]) reporterId = match[1];
-            } else if (field.name === "Reportado") {
+            } else if (field.name === "Reported") {
               const match = field.value?.match(/<@(\d+)>/);
               if (match && match[1]) reportedUserId = match[1];
-            } else if (field.name === "Motivo del Reporte") {
+            } else if (field.name === "Report Reason") {
               reason = field.value || "";
-            } else if (field.name === "Evidencia") {
+            } else if (field.name === "Evidence") {
               const value = field.value || "";
               const urls = value.split("\n").map((line) => {
                 const match = line.match(/^\d+\.\s*(.+)$/);
@@ -187,7 +187,7 @@ const event: EventModule<"interactionCreate"> = {
 
           if (!reporterId || !reportedUserId) {
             await interaction.followUp({
-              content: "No se pudo identificar al reportante o reportado desde el embed.",
+              content: "Could not identify the reporter or reported from the embed.",
               ephemeral: true
             }).catch(() => {});
             return;
@@ -222,13 +222,13 @@ const event: EventModule<"interactionCreate"> = {
           if (!channel) {
             await interaction.followUp({
               content:
-                "No se pudo crear el canal privado. Verifica que la categoría esté configurada correctamente con `/setup-report-private-category`.",
+                "Could not create the private channel. Verify that the category is configured correctly with `/setup-report-private-category`.",
               ephemeral: true
             }).catch(() => {});
             return;
           }
 
-          // Enviar mensaje inicial en el canal
+          // Send initial message in the channel
           await sendInitialReportChannelMessage(
             channel,
             caseId,
@@ -238,7 +238,7 @@ const event: EventModule<"interactionCreate"> = {
             evidenceUrls.length > 0 ? evidenceUrls : undefined
           );
 
-          // Actualizar el embed del reporte
+          // Update the report embed
           if (interaction.message) {
             await updateReportEmbedWithChannel(
               interaction.message,
@@ -249,35 +249,35 @@ const event: EventModule<"interactionCreate"> = {
           }
 
           await interaction.followUp({
-            content: `✅ Canal privado creado: <#${channel.id}>`,
+            content: `✅ Private channel created: <#${channel.id}>`,
             ephemeral: true
           }).catch(() => {});
         } catch (error) {
-          logger.error("Error al crear canal privado de reporte:", error);
+          logger.error("Error creating private report channel:", error);
           await interaction.followUp({
-            content: "Ocurrió un error al crear el canal privado.",
+            content: "An error occurred while creating the private channel.",
             ephemeral: true
           }).catch(() => {});
         }
         return;
       }
 
-      // Botón "Cerrar Canal Privado"
+      // Button "Close Private Channel"
       if (interaction.customId.startsWith("close_report_channel_")) {
         if (!interaction.inGuild() || !interaction.guild) {
           await (interaction as any).reply({
-            content: "Este botón solo puede usarse dentro de un servidor.",
+            content: "This button can only be used within a server.",
             ephemeral: true
           });
           return;
         }
 
-        // Verificar que sea staff
+        // Verify that it is staff
         const hasAccess = hasStaffAccess(interaction as any);
         if (!hasAccess) {
           await (interaction as any).reply({
             content:
-              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+              "This button is limited to authorized staff. Verify that you have the corresponding role or permission.",
             ephemeral: true
           });
           return;
@@ -290,7 +290,7 @@ const event: EventModule<"interactionCreate"> = {
 
           if (!interaction.channel || !interaction.channel.isTextBased() || interaction.channel.isDMBased()) {
             await interaction.followUp({
-              content: "Este comando solo puede usarse en un canal de texto del servidor.",
+              content: "This command can only be used in a text channel of the server.",
               ephemeral: true
             }).catch(() => {});
             return;
@@ -298,10 +298,10 @@ const event: EventModule<"interactionCreate"> = {
 
           const channel = interaction.channel as TextChannel;
 
-          // Verificar que el canal sea un canal privado de reporte
-          if (!channel.name.startsWith("reporte-")) {
+          // Verify that the channel is a private report channel
+          if (!channel.name.startsWith("report-")) {
             await interaction.followUp({
-              content: "Este comando solo puede usarse en canales privados de reportes.",
+              content: "This command can only be used in private report channels.",
               ephemeral: true
             }).catch(() => {});
             return;
@@ -315,29 +315,28 @@ const event: EventModule<"interactionCreate"> = {
           });
 
           await interaction.followUp({
-            content: "✅ Canal cerrado correctamente.",
+            content: "✅ Private channel closed successfully.",
             ephemeral: true
           }).catch(() => {});
         } catch (error) {
-          logger.error("Error al cerrar canal privado de reporte:", error);
+          logger.error("Error closing private report channel:", error);
           await interaction.followUp({
-            content: "Ocurrió un error al cerrar el canal.",
+            content: "An error occurred while closing the channel.",
             ephemeral: true
           }).catch(() => {});
         }
         return;
       }
 
-      // Botones para abrir tickets (4 categorías)
+      // Buttons to open tickets (4 categories)
       if (
         interaction.customId === "ticket_open_general" ||
         interaction.customId === "ticket_open_support" ||
-        interaction.customId === "ticket_open_reports" ||
         interaction.customId === "ticket_open_other"
       ) {
         if (!interaction.inGuild() || !interaction.guild) {
           await (interaction as any).reply({
-            content: "Este botón solo puede usarse dentro de un servidor.",
+            content: "This button can only be used within a server.",
             ephemeral: true
           });
           return;
@@ -349,7 +348,6 @@ const event: EventModule<"interactionCreate"> = {
           const category = interaction.customId.replace("ticket_open_", "") as
             | "general"
             | "support"
-            | "reports"
             | "other";
 
           const { createTicket, sendTicketInitialMessage } = await import("../utils/ticketHandler.js");
@@ -391,12 +389,12 @@ const event: EventModule<"interactionCreate"> = {
           return;
         }
 
-        // Verificar que sea staff
+        // Verify that it is staff
         const hasAccess = hasStaffAccess(interaction as any);
         if (!hasAccess) {
           await (interaction as any).reply({
             content:
-              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+              "This button is limited to authorized staff. Verify that you have the corresponding role or permission.",
             ephemeral: true
           });
           return;
@@ -412,13 +410,13 @@ const event: EventModule<"interactionCreate"> = {
 
           if (!channel || !channel.isTextBased() || channel.isDMBased()) {
             await interaction.followUp({
-              content: "No se pudo encontrar el canal del ticket.",
+              content: "Could not find the ticket channel.",
               ephemeral: true
             }).catch(() => {});
             return;
           }
 
-          // Buscar el mensaje inicial del ticket
+          // Find the initial message of the ticket
           const messages = await channel.messages.fetch({ limit: 10 });
           const initialMessage = messages.find((m) => m.embeds.length > 0 && m.components.length > 0);
 
@@ -430,31 +428,31 @@ const event: EventModule<"interactionCreate"> = {
             });
           }
         } catch (error) {
-          logger.error("Error al tomar el ticket:", error);
+          logger.error("Error taking the ticket:", error);
           await interaction.followUp({
-            content: "Ocurrió un error al tomar el ticket.",
+            content: "An error occurred while taking the ticket.",
             ephemeral: true
           }).catch(() => {});
         }
         return;
       }
 
-      // Botón "Cerrar Ticket"
+      // Button "Close Ticket"
       if (interaction.customId.startsWith("ticket_close_")) {
         if (!interaction.inGuild() || !interaction.guild) {
           await (interaction as any).reply({
-            content: "Este botón solo puede usarse dentro de un servidor.",
+            content: "This button can only be used within a server.",
             ephemeral: true
           });
           return;
         }
 
-        // Verificar que sea staff
+        // Verify that it is staff
         const hasAccess = hasStaffAccess(interaction as any);
         if (!hasAccess) {
           await (interaction as any).reply({
             content:
-              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+              "This button is limited to authorized staff. Verify that you have the corresponding role or permission.",
             ephemeral: true
           });
           return;
@@ -466,31 +464,31 @@ const event: EventModule<"interactionCreate"> = {
           const modal = createCloseTicketModal(channelId);
           await interaction.showModal(modal);
         } catch (error) {
-          logger.error("Error al mostrar el modal de cierre de ticket:", error);
+          logger.error("Error showing the close ticket modal:", error);
           await interaction.reply({
-            content: "Ocurrió un error al abrir el formulario de cierre.",
+            content: "An error occurred while opening the close ticket form.",
             ephemeral: true
           }).catch(() => {});
         }
         return;
       }
 
-      // Botón "Guardar Transcript"
+      // Button "Save Transcript"
       if (interaction.customId.startsWith("ticket_transcript_")) {
         if (!interaction.inGuild() || !interaction.guild) {
           await (interaction as any).reply({
-            content: "Este botón solo puede usarse dentro de un servidor.",
+            content: "This button can only be used within a server.",
             ephemeral: true
           });
           return;
         }
 
-        // Verificar que sea staff
+        // Verify that it is staff
         const hasAccess = hasStaffAccess(interaction as any);
         if (!hasAccess) {
           await (interaction as any).reply({
             content:
-              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+              "This button is limited to authorized staff. Verify that you have the corresponding role or permission.",
             ephemeral: true
           });
           return;
@@ -506,16 +504,16 @@ const event: EventModule<"interactionCreate"> = {
 
           if (!channel || !channel.isTextBased() || channel.isDMBased()) {
             await interaction.followUp({
-              content: "No se pudo encontrar el canal del ticket.",
+              content: "Could not find the ticket channel.",
               ephemeral: true
             }).catch(() => {});
             return;
           }
 
-          // Verificar que el canal sea un ticket
+          // Verify that the channel is a ticket channel
           if (!channel.name.startsWith("ticket-")) {
             await interaction.followUp({
-              content: "Este comando solo puede usarse en canales de tickets.",
+              content: "This command can only be used in ticket channels.",
               ephemeral: true
             }).catch(() => {});
             return;
@@ -529,35 +527,35 @@ const event: EventModule<"interactionCreate"> = {
           });
 
           await interaction.followUp({
-            content: "✅ Transcript guardado correctamente.",
+            content: "✅ Transcript saved successfully.",
             ephemeral: true
           }).catch(() => {});
         } catch (error) {
-          logger.error("Error al generar transcript:", error);
+          logger.error("Error generating transcript:", error);
           await interaction.followUp({
-            content: `Ocurrió un error al generar el transcript: ${error instanceof Error ? error.message : "Error desconocido"}`,
+            content: `An error occurred while generating the transcript: ${error instanceof Error ? error.message : "Unknown error"}`,
             ephemeral: true
           }).catch(() => {});
         }
         return;
       }
 
-      // Botón "Tomar Ticket"
+      // Button "Take Ticket"
       if (interaction.customId.startsWith("ticket_take_")) {
         if (!interaction.inGuild() || !interaction.guild) {
           await (interaction as any).reply({
-            content: "Este botón solo puede usarse dentro de un servidor.",
+            content: "This button can only be used within a server.",
             ephemeral: true
           });
           return;
         }
 
-        // Verificar que sea staff
+        // Verify that it is staff
         const hasAccess = hasStaffAccess(interaction as any);
         if (!hasAccess) {
           await (interaction as any).reply({
             content:
-              "Este botón está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+              "This button is limited to authorized staff. Verify that you have the corresponding role or permission.",
             ephemeral: true
           });
           return;
@@ -573,13 +571,13 @@ const event: EventModule<"interactionCreate"> = {
 
           if (!channel || !channel.isTextBased() || channel.isDMBased()) {
             await interaction.followUp({
-              content: "No se pudo encontrar el canal del ticket.",
+              content: "Could not find the ticket channel.",
               ephemeral: true
             }).catch(() => {});
             return;
           }
 
-          // Buscar el mensaje inicial del ticket
+          // Find the initial message of the ticket
           const messages = await channel.messages.fetch({ limit: 10 });
           const initialMessage = messages.find((m) => m.embeds.length > 0 && m.components.length > 0);
 
@@ -591,9 +589,9 @@ const event: EventModule<"interactionCreate"> = {
             });
           }
         } catch (error) {
-          logger.error("Error al tomar el ticket:", error);
+          logger.error("Error taking the ticket:", error);
           await interaction.followUp({
-            content: "Ocurrió un error al tomar el ticket.",
+            content: "An error occurred while taking the ticket.",
             ephemeral: true
           }).catch(() => {});
         }
@@ -603,24 +601,24 @@ const event: EventModule<"interactionCreate"> = {
       return;
     }
 
-    // Manejar modales (envío de reporte, veredicto y cierre de ticket)
+    // Handle modals (sending report, verdict and closing ticket)
     if (interaction.isModalSubmit()) {
       // Modal de cierre de ticket
       if (interaction.customId.startsWith("close_ticket_modal_")) {
         if (!interaction.inGuild() || !interaction.guild) {
           await interaction.reply({
-            content: "Este formulario solo puede usarse dentro de un servidor.",
+            content: "This form can only be used within a server.",
             ephemeral: true
           });
           return;
         }
 
-        // Verificar que sea staff
+        // Verify that it is staff
         const hasAccess = hasStaffAccess(interaction as any);
         if (!hasAccess) {
           await interaction.reply({
             content:
-              "Este formulario está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+              "This form is limited to authorized staff. Verify that you have the corresponding role or permission.",
             ephemeral: true
           });
           return;
@@ -639,26 +637,26 @@ const event: EventModule<"interactionCreate"> = {
           if (!channel || !channel.isTextBased() || channel.isDMBased()) {
             try {
               await interaction.editReply({
-                content: "No se pudo encontrar el canal del ticket."
+                content: "Could not find the ticket channel."
               });
             } catch {
               await interaction.followUp({
-                content: "No se pudo encontrar el canal del ticket.",
+                content: "Could not find the ticket channel.",
                 ephemeral: true
               }).catch(() => {});
             }
             return;
           }
 
-          // Verificar que el canal sea un ticket
+          // Verify that the channel is a ticket channel
           if (!channel.name.startsWith("ticket-")) {
             try {
               await interaction.editReply({
-                content: "Este comando solo puede usarse en canales de tickets."
+                content: "This command can only be used in ticket channels."
               });
             } catch {
               await interaction.followUp({
-                content: "Este comando solo puede usarse en canales de tickets.",
+                content: "This command can only be used in ticket channels.",
                 ephemeral: true
               }).catch(() => {});
             }
@@ -674,23 +672,23 @@ const event: EventModule<"interactionCreate"> = {
 
           try {
             await interaction.editReply({
-              content: "✅ Ticket cerrado correctamente."
+              content: "✅ Ticket closed successfully."
             });
           } catch {
             await interaction.followUp({
-              content: "✅ Ticket cerrado correctamente.",
+              content: "✅ Ticket closed successfully.",
               ephemeral: true
             }).catch(() => {});
           }
         } catch (error) {
-          logger.error("Error al cerrar ticket:", error);
+          logger.error("Error closing ticket:", error);
           try {
             await interaction.editReply({
-              content: "Ocurrió un error al cerrar el ticket."
+              content: "An error occurred while closing the ticket."
             });
           } catch {
             await interaction.followUp({
-              content: "Ocurrió un error al cerrar el ticket.",
+              content: "An error occurred while closing the ticket.",
               ephemeral: true
             }).catch(() => {});
           }
@@ -701,7 +699,7 @@ const event: EventModule<"interactionCreate"> = {
       if (interaction.customId === "report_user_modal") {
         if (!interaction.inGuild() || !interaction.guild) {
           await interaction.reply({
-            content: "Este formulario solo puede usarse dentro de un servidor.",
+            content: "This form can only be used within a server.",
             ephemeral: true
           });
           return;
@@ -710,7 +708,7 @@ const event: EventModule<"interactionCreate"> = {
         await interaction.deferReply({ ephemeral: true });
 
         try {
-          // Importación dinámica para evitar cargar modelos al inicio
+          // Dynamic import to avoid loading models at startup
           const { processUserReport } = await import("../utils/reportHandler.js");
           const userInput = interaction.fields.getTextInputValue("report_user_id");
           const reason = interaction.fields.getTextInputValue("report_reason");
@@ -729,29 +727,29 @@ const event: EventModule<"interactionCreate"> = {
             embeds: []
           });
         } catch (error) {
-          logger.error("Error al procesar el modal de reporte:", error);
+          logger.error("Error processing the report modal:", error);
           await interaction.editReply({
-            content: "Ocurrió un error al procesar tu reporte. Por favor, intenta nuevamente más tarde.",
+            content: "An error occurred while processing your report. Please try again later.",
             embeds: []
           });
         }
         return;
       }
 
-      // Modal de veredicto
+      // Modal of verdict
       if (interaction.customId.startsWith("verdict_modal_")) {
         if (!interaction.inGuild() || !interaction.guild) {
           await interaction.reply({
-            content: "Este formulario solo puede usarse dentro de un servidor.",
+            content: "This form can only be used within a server.",
             ephemeral: true
           });
           return;
         }
 
-        // Verificar que sea staff
+        // Verify that it is staff
         if (!interaction.inGuild() || !interaction.guild) {
           await (interaction as any).reply({
-            content: "Este formulario solo puede usarse dentro de un servidor.",
+            content: "This form can only be used within a server.",
             ephemeral: true
           });
           return;
@@ -761,7 +759,7 @@ const event: EventModule<"interactionCreate"> = {
         if (!hasAccess) {
           await (interaction as any).reply({
             content:
-              "Este formulario está limitado al personal autorizado. Verifica que tengas el rol o permiso correspondiente.",
+              "This form is limited to authorized staff. Verify that you have the corresponding role or permission.",
             ephemeral: true
           });
           return;
@@ -773,35 +771,35 @@ const event: EventModule<"interactionCreate"> = {
           const caseId = parseInt(interaction.customId.replace("verdict_modal_", ""));
           const verdict = interaction.fields.getTextInputValue("verdict_text");
 
-          // Obtener información del reporte desde el embed del mensaje
+          // Get the report information from the embed of the message
           const message = interaction.message;
           if (!message || !message.embeds[0]) {
             await interaction.editReply({
-              content: "No se pudo encontrar la información del reporte.",
+              content: "Could not find the report information.",
               embeds: []
             });
             return;
           }
 
           const embed = message.embeds[0];
-          const reporterField = embed.fields?.find((f) => f.name === "Reportante");
-          const reportedField = embed.fields?.find((f) => f.name === "Reportado");
+          const reporterField = embed.fields?.find((f) => f.name === "Reporter");
+          const reportedField = embed.fields?.find((f) => f.name === "Reported");
 
           if (!reporterField || !reportedField) {
             await interaction.editReply({
-              content: "No se pudo encontrar la información del reportante o reportado.",
+              content: "Could not find the information of the reporter or reported.",
               embeds: []
             });
             return;
           }
 
-          // Extraer IDs de los campos (formato: <@ID> (tag))
+          // Extract IDs of the fields (format: <@ID> (tag))
           const reporterMatch = reporterField.value.match(/<@(\d+)>/);
           const reportedMatch = reportedField.value.match(/<@(\d+)>/);
 
           if (!reporterMatch || !reportedMatch) {
             await interaction.editReply({
-              content: "No se pudieron extraer los IDs de los usuarios.",
+              content: "Could not extract the IDs of the users.",
               embeds: []
             });
             return;
@@ -810,13 +808,13 @@ const event: EventModule<"interactionCreate"> = {
           const reporterId = reporterMatch[1]!;
           const reportedUserId = reportedMatch[1]!;
 
-          // Importar funciones necesarias
+          // Import necessary functions
           const {
             sendVerdictDMs,
             updateReportEmbedVerdict
           } = await import("../utils/reportVerdictHandler.js");
 
-          // Enviar DMs a ambos usuarios
+          // Send DMs to both users
           await sendVerdictDMs(
             interaction.guild,
             reporterId,
@@ -826,19 +824,19 @@ const event: EventModule<"interactionCreate"> = {
             interaction.user
           );
 
-          // Actualizar el embed del reporte
+          // Update the report embed
           if (message) {
             await updateReportEmbedVerdict(message, interaction.user, caseId, verdict);
           }
 
           await interaction.editReply({
-            content: `Veredicto enviado correctamente. Se notificó a ambos usuarios por MD.`,
+            content: `Verdict sent successfully. Both users were notified by DM.`,
             embeds: []
           });
         } catch (error) {
-          logger.error("Error al procesar el veredicto:", error);
+          logger.error("Error processing the verdict:", error);
           await interaction.editReply({
-            content: "Ocurrió un error al procesar el veredicto. Por favor, intenta nuevamente más tarde.",
+            content: "An error occurred while processing the verdict. Please try again later.",
             embeds: []
           });
         }
@@ -848,7 +846,7 @@ const event: EventModule<"interactionCreate"> = {
       return;
     }
 
-    // Manejar comandos de chat (lógica existente)
+    // Handle chat commands (existing logic)
     if (!interaction.isChatInputCommand()) return;
 
     const botClient = interaction.client as BotClient;
@@ -856,10 +854,10 @@ const event: EventModule<"interactionCreate"> = {
 
     if (!command) {
       await interaction.reply({
-        content: "Este comando ya no está disponible.",
+        content: "This command is no longer available.",
         ephemeral: true
       });
-      logger.warn(`Intento de usar comando desconocido: ${interaction.commandName}`);
+      logger.warn(`Attempt to use unknown command: ${interaction.commandName}`);
       return;
     }
 
@@ -879,12 +877,12 @@ const event: EventModule<"interactionCreate"> = {
         if (!hasPermissions) {
           if (interaction.deferred || interaction.replied) {
             await interaction.followUp({
-              content: "No tienes permisos suficientes para ejecutar este comando.",
+              content: "You do not have sufficient permissions to execute this command.",
               ephemeral: true
             });
           } else {
             await interaction.reply({
-              content: "No tienes permisos suficientes para ejecutar este comando.",
+              content: "You do not have sufficient permissions to execute this command.",
               ephemeral: true
             });
           }
@@ -894,22 +892,22 @@ const event: EventModule<"interactionCreate"> = {
 
       await command.execute(interaction);
     } catch (error) {
-      logger.error(`Error al ejecutar el comando ${interaction.commandName}`, error);
+      logger.error(`Error executing the command ${interaction.commandName}`, error);
 
       try {
         if (interaction.deferred || interaction.replied) {
           await interaction.followUp({
-            content: "Ha ocurrido un error inesperado al procesar el comando.",
+            content: "An unexpected error occurred while processing the command.",
             ephemeral: true
           });
         } else {
           await interaction.reply({
-            content: "Ha ocurrido un error inesperado al procesar el comando.",
+            content: "An unexpected error occurred while processing the command.",
             ephemeral: true
           });
         }
       } catch (replyError) {
-        logger.error("Error al enviar mensaje de error al usuario:", replyError);
+        logger.error("Error sending error message to the user:", replyError);
       }
     }
   }

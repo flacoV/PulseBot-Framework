@@ -47,13 +47,13 @@ const loadEventModule = async (filePath: string): Promise<EventModule | null> =>
     const event = importedModule.default ?? importedModule.event;
 
     if (!event?.name || typeof event.execute !== "function") {
-      logger.warn(`El archivo ${filePath} no exporta un evento válido.`);
+      logger.warn(`The file ${filePath} does not export a valid event.`);
       return null;
     }
 
     return event;
   } catch (error) {
-    logger.error(`Error al cargar el evento desde ${filePath}`, error);
+    logger.error(`Error loading the event from ${filePath}`, error);
     return null;
   }
 };
@@ -77,7 +77,7 @@ export const registerEvents = async (client: BotClient) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await event.execute(...(args as any));
         } catch (error) {
-          logger.error(`Error en la ejecución del evento ${event.name}`, error);
+          logger.error(`Error executing the event ${event.name}`, error);
         }
       });
     } else {
@@ -86,11 +86,11 @@ export const registerEvents = async (client: BotClient) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await event.execute(...(args as any));
         } catch (error) {
-          logger.error(`Error en la ejecución del evento ${event.name}`, error);
+          logger.error(`Error executing the event ${event.name}`, error);
         }
       });
     }
   }
 
-  logger.info("Eventos registrados correctamente.");
+  logger.info("Events registered successfully.");
 };

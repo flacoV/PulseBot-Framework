@@ -29,8 +29,8 @@ interface LogReportOptions {
 }
 
 /**
- * Envía un log de reporte al canal configurado específicamente para reportes.
- * Si no hay canal configurado, no envía nada (no falla).
+ * Sends a report log to the configured channel specifically for reports.
+ * If there is no configured channel, nothing is sent (no failure).
  */
 export const logUserReport = async (options: LogReportOptions): Promise<void> => {
   const { guild, caseId, reporter, reportedUser, reason, evidenceUrls } = options;
@@ -40,7 +40,7 @@ export const logUserReport = async (options: LogReportOptions): Promise<void> =>
     const reportLogChannelId = moderationConfig?.reportLogChannelId;
 
     if (!reportLogChannelId) {
-      // No hay canal configurado para reportes, no es un error crítico
+      // No configured channel for reports, not a critical error
       return;
     }
 
@@ -48,78 +48,78 @@ export const logUserReport = async (options: LogReportOptions): Promise<void> =>
 
     if (!channel) {
       logger.warn(
-        `El canal de logs de reportes (${reportLogChannelId}) no existe o no es accesible en el servidor ${guild.id}.`
+        `The report log channel (${reportLogChannelId}) does not exist or is not accessible in the server ${guild.id}.`
       );
       return;
     }
 
     if (!channel.isTextBased() || channel.isDMBased()) {
       logger.warn(
-        `El canal de logs de reportes (${reportLogChannelId}) no es un canal de texto válido en el servidor ${guild.id}.`
+        `The report log channel (${reportLogChannelId}) is not a valid text channel in the server ${guild.id}.`
       );
       return;
     }
 
-    // Verificar permisos del bot
+    // Verify bot permissions
     const me = await guild.members.fetchMe();
     if (!channel.permissionsFor(me)?.has(["ViewChannel", "SendMessages", "EmbedLinks"])) {
       logger.warn(
-        `El bot no tiene permisos suficientes en el canal de logs de reportes (${reportLogChannelId}) del servidor ${guild.id}.`
+        `The bot does not have sufficient permissions in the report log channel (${reportLogChannelId}) in the server ${guild.id}.`
       );
       return;
     }
 
     const embed = createBaseEmbed({
-      title: "🚨 Reporte de Usuario",
-      description: `Se recibió un reporte sobre ${reportedUser.tag}`,
+      title: "🚨 User Report",
+      description: `A user report was received about ${reportedUser.tag}`,
       color: Colors.Red,
-      footerText: `Caso #${caseId} · ID: ${reportedUser.id}`
+      footerText: `Case #${caseId} · ID: ${reportedUser.id}`
     }).addFields(
       {
-        name: "Reportante",
+        name: "Reporter",
         value: `<@${reporter.id}> (${reporter.tag})`,
         inline: true
       },
       {
-        name: "Reportado",
+        name: "Reported",
         value: `<@${reportedUser.id}> (${reportedUser.tag})`,
         inline: true
       },
       {
-        name: "Motivo del Reporte",
-        value: reason || "No especificado"
+        name: "Report Reason",
+        value: reason || "Not specified"
       }
     );
 
     if (evidenceUrls && evidenceUrls.length > 0) {
       embed.addFields({
-        name: "Evidencia",
+        name: "Evidence",
         value: evidenceUrls.map((url, index) => `${index + 1}. ${url}`).join("\n")
       });
     }
 
     embed.addFields({
-      name: "Timestamp",
+      name: "Timestamp", // TODO: Add localization
       value: `<t:${Math.floor(Date.now() / 1000)}:F>`,
       inline: true
     });
 
-    // Agregar botones para que el staff pueda tomar el reporte y dar veredicto
+    // Add buttons for staff to take the report and give verdict
     const takeReportButton = new ButtonBuilder()
       .setCustomId(`take_report_${caseId}`)
-      .setLabel("Tomar Reporte")
+      .setLabel("Take Report")
       .setStyle(ButtonStyle.Primary)
       .setEmoji("✋");
 
     const giveVerdictButton = new ButtonBuilder()
       .setCustomId(`give_verdict_${caseId}`)
-      .setLabel("Dar Veredicto")
+      .setLabel("Give Verdict")
       .setStyle(ButtonStyle.Success)
       .setEmoji("⚖️");
 
     const openPrivateChannelButton = new ButtonBuilder()
       .setCustomId(`open_private_channel_${caseId}`)
-      .setLabel("Abrir Canal Privado")
+      .setLabel("Open Private Channel")
       .setStyle(ButtonStyle.Secondary)
       .setEmoji("🔒");
 
@@ -131,8 +131,8 @@ export const logUserReport = async (options: LogReportOptions): Promise<void> =>
 
     await channel.send({ embeds: [embed], components: [actionRow] });
   } catch (error) {
-    // No queremos que un error en el logging rompa el flujo de reportes
-    logger.error(`Error al enviar log de reporte en el servidor ${guild.id}:`, error);
+    // We don't want an error in the logging to break the report flow
+    logger.error(`Error sending report log in the server ${guild.id}:`, error);
   }
 };
 

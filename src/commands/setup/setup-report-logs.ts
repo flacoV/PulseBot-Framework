@@ -13,13 +13,13 @@ import { logger } from "../../utils/logger.js";
 
 const builder = new SlashCommandBuilder()
   .setName("setup-report-logs")
-  .setDescription("Configura el canal donde se enviarán los logs de reportes de usuarios.")
+  .setDescription("Configures the channel where user report logs will be sent.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addChannelOption((option) =>
     option
-      .setName("canal")
-      .setDescription("Canal donde se enviarán los logs de reportes.")
+      .setName("channel")
+      .setDescription("Channel where user report logs will be sent.")
       .addChannelTypes(ChannelType.GuildText)
       .setRequired(true)
   );
@@ -28,7 +28,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   try {
     if (!interaction.inGuild() || !interaction.guild) {
       await interaction.reply({
-        content: "Este comando solo puede ejecutarse dentro de un servidor.",
+        content: "This command can only be executed within a server.",
         ephemeral: true
       });
       return;
@@ -36,7 +36,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
     await interaction.deferReply({ ephemeral: true });
 
-    const selectedChannel = interaction.options.getChannel("canal", true, [ChannelType.GuildText]);
+    const selectedChannel = interaction.options.getChannel("channel", true, [ChannelType.GuildText]);
 
     const channel = (await interaction.guild.channels
       .fetch(selectedChannel.id)
@@ -44,20 +44,20 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
     if (!channel) {
       await interaction.editReply({
-        content: "No pude encontrar ese canal. Intenta nuevamente.",
+        content: "I was unable to find that channel. Try again.",
         embeds: []
       });
       return;
     }
 
-    // Verificar permisos del bot en el canal
+    // Verify bot permissions in the channel
     const me = await interaction.guild.members.fetchMe();
     const botPermissions = channel.permissionsFor(me);
 
     if (!botPermissions?.has(["ViewChannel", "SendMessages", "EmbedLinks"])) {
       await interaction.editReply({
         content:
-          "El bot no tiene permisos suficientes en ese canal. Necesita: Ver Canal, Enviar Mensajes y Enviar Embeds.",
+          "The bot does not have sufficient permissions in that channel. It needs: View Channel, Send Messages and Send Embeds.",
         embeds: []
       });
       return;
@@ -68,35 +68,35 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
 
     const embed = createBaseEmbed({
-      title: "Canal de Logs de Reportes Configurado",
-      description: `El canal ${channel} ahora recibirá todos los reportes de usuarios.`,
-      footerText: "Los reportes se enviarán aquí con toda la información del reportante y reportado."
+      title: "Report Logs Configured",
+      description: `The channel ${channel} will now receive all user report logs.`,
+      footerText: "Reports will be sent here with all the information about the reporter and reported."
     }).addFields({
-      name: "Canal",
+      name: "Channel",
       value: `${channel} (${channel.id})`
     });
 
     await interaction.editReply({
-      content: "Configuración guardada correctamente.",
+      content: "Configuration saved successfully.",
       embeds: [embed]
     });
   } catch (error) {
-    logger.error("Error en setup-report-logs:", error);
+    logger.error("Error in setup-report-logs:", error);
 
     try {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({
-          content: "Ocurrió un error al configurar el canal de logs de reportes. Por favor, intenta nuevamente.",
+          content: "An error occurred while configuring the report logs channel. Please try again.",
           embeds: []
         });
       } else {
         await interaction.reply({
-          content: "Ocurrió un error al configurar el canal de logs de reportes. Por favor, intenta nuevamente.",
+          content: "An error occurred while configuring the report logs channel. Please try again.",
           ephemeral: true
         });
       }
     } catch (replyError) {
-      logger.error("Error al enviar mensaje de error en setup-report-logs:", replyError);
+      logger.error("Error sending error message in setup-report-logs:", replyError);
     }
   }
 };

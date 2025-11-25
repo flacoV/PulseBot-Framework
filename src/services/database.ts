@@ -15,9 +15,9 @@ export const connectToDatabase = async () => {
   try {
     isConnecting = true;
     await mongoose.connect(uri);
-    logger.info("Conexión a MongoDB establecida.");
+    logger.info("🚀 Connection to MongoDB established.");
   } catch (error) {
-    logger.error("No fue posible conectarse a MongoDB.", error);
+    logger.error("‼️ Could not connect to MongoDB.", error);
     throw error;
   } finally {
     isConnecting = false;
@@ -27,7 +27,7 @@ export const connectToDatabase = async () => {
 export const disconnectDatabase = async () => {
   if (mongoose.connection.readyState === 0) return;
   await mongoose.disconnect();
-  logger.info("Conexión a MongoDB cerrada.");
+  logger.info("🔒 Connection to MongoDB closed.");
 };
 
 

@@ -15,20 +15,20 @@ import { logUserReport } from "./reportLogger.js";
  * Crea el modal para reportar un usuario.
  */
 export const createReportModal = () => {
-  const modal = new ModalBuilder().setCustomId("report_user_modal").setTitle("Reportar Usuario");
+  const modal = new ModalBuilder().setCustomId("report_user_modal").setTitle("Report User");
 
   const userInput = new TextInputBuilder()
     .setCustomId("report_user_id")
-    .setLabel("Usuario a Reportar")
-    .setPlaceholder("Pega el ID del usuario a reportar")
+    .setLabel("User to Report")
+    .setPlaceholder("Paste the ID of the user to report")
     .setStyle(TextInputStyle.Short)
     .setRequired(true)
     .setMaxLength(100);
 
   const reasonInput = new TextInputBuilder()
     .setCustomId("report_reason")
-    .setLabel("Motivo del Reporte")
-    .setPlaceholder("Describe detalladamente qué hizo el usuario que viola las reglas...")
+    .setLabel("Report Reason")
+    .setPlaceholder("Describe in detail what the user did that violates the rules...")
     .setStyle(TextInputStyle.Paragraph)
     .setRequired(true)
     .setMinLength(10)
@@ -36,8 +36,8 @@ export const createReportModal = () => {
 
   const evidenceInput = new TextInputBuilder()
     .setCustomId("report_evidence")
-    .setLabel("Evidencia (Opcional)")
-    .setPlaceholder("URLs de imágenes, mensajes, o referencias (separadas por comas)")
+    .setLabel("Evidence")
+    .setPlaceholder("URLs of images, messages, or references (separated by commas)")
     .setStyle(TextInputStyle.Paragraph)
     .setRequired(false)
     .setMaxLength(500);
@@ -52,16 +52,16 @@ export const createReportModal = () => {
 };
 
 /**
- * Extrae el ID de usuario de una mención o ID directo.
+ * Extracts the user ID from a mention or direct ID.
  */
 const extractUserId = (input: string): string | null => {
-  // Formato de mención: <@123456789> o <@!123456789>
+  // Mention format: <@123456789> or <@!123456789>
   const mentionMatch = input.match(/<@!?(\d+)>/);
   if (mentionMatch && mentionMatch[1]) {
     return mentionMatch[1];
   }
 
-  // ID directo (solo números)
+  // Direct ID (only numbers)
   if (/^\d+$/.test(input.trim())) {
     return input.trim();
   }
@@ -70,7 +70,7 @@ const extractUserId = (input: string): string | null => {
 };
 
 /**
- * Formatea las URLs de evidencia.
+ * Formats the evidence URLs.
  */
 const formatEvidence = (raw?: string | null): string[] => {
   if (!raw) return [];
@@ -82,7 +82,7 @@ const formatEvidence = (raw?: string | null): string[] => {
 };
 
 /**
- * Procesa un reporte de usuario y crea un caso de moderación tipo "note".
+ * Processes a user report and creates a moderation case of type "note".
  */
 export const processUserReport = async (
   guild: Guild,
@@ -92,50 +92,50 @@ export const processUserReport = async (
   evidenceInput?: string | null
 ): Promise<{ success: boolean; message: string; caseId?: number }> => {
   try {
-    // Extraer ID del usuario reportado
+    // Extract the reported user ID
     const reportedUserId = extractUserId(userInput);
     if (!reportedUserId) {
       return {
         success: false,
-        message: "No pude identificar al usuario. Por favor, menciona al usuario (@usuario) o pega su ID."
+        message: "I could not identify the user. Please mention the user (@user) or paste their ID."
       };
     }
 
-    // Verificar que el usuario reportado existe en el servidor
+    // Verify that the reported user exists in the server
     const reportedMember = await guild.members.fetch(reportedUserId).catch(() => null);
     if (!reportedMember) {
       return {
         success: false,
-        message: "No pude encontrar a ese usuario en el servidor. Verifica que la mención o ID sea correcta."
+        message: "I could not find that user in the server. Verify that the mention or ID is correct."
       };
     }
 
-    // Verificar que no se está reportando a sí mismo
+    // Verify that the user is not reporting themselves
     if (reportedUserId === reporter.id) {
       return {
         success: false,
-        message: "No puedes reportarte a ti mismo."
+        message: "You cannot report yourself."
       };
     }
 
-    // Verificar que no se está reportando a un bot
+    // Verify that the user is not reporting a bot
     if (reportedMember.user.bot) {
       return {
         success: false,
-        message: "No puedes reportar a un bot."
+        message: "You cannot report a bot."
       };
     }
 
-    // Formatear evidencia
+    // Format evidence
     const evidence = formatEvidence(evidenceInput);
 
-    // Crear caso de moderación tipo "note" (reporte)
+    // Create moderation case of type "note" (report)
     const moderationCase = await createModerationCase({
       guildId: guild.id,
       userId: reportedUserId,
       moderatorId: reporter.id,
       type: "note",
-      reason: `[REPORTE] ${reason}`,
+      reason: `[REPORT] ${reason}`,
       ...(evidence.length > 0 && { evidenceUrls: evidence }),
       metadata: {
         reportedBy: reporter.id,
@@ -143,7 +143,7 @@ export const processUserReport = async (
       }
     });
 
-    // Enviar log al canal de reportes si está configurado
+    // Send log to the report channel if configured
     await logUserReport({
       guild,
       caseId: moderationCase.caseId,
@@ -163,14 +163,14 @@ export const processUserReport = async (
 
     return {
       success: true,
-      message: `Reporte enviado correctamente. Caso #${moderationCase.caseId}. El equipo de moderación lo revisará pronto.`,
+      message: `Report sent successfully. Case #${moderationCase.caseId}. The moderation team will review it soon.`,
       caseId: moderationCase.caseId
     };
   } catch (error) {
-    logger.error("Error al procesar reporte de usuario:", error);
+    logger.error("Error processing user report:", error);
     return {
       success: false,
-      message: "Ocurrió un error al procesar tu reporte. Por favor, intenta nuevamente más tarde."
+      message: "An error occurred while processing your report. Please try again later."
     };
   }
 };

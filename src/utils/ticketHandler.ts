@@ -20,38 +20,35 @@ import { createBaseEmbed } from "./embedBuilder.js";
 import { logger } from "./logger.js";
 import { getEnvVarList } from "./env.js";
 
-export type TicketCategory = "general" | "support" | "reports" | "other";
+export type TicketCategory = "general" | "support" | "other";
 
 const CATEGORY_LABELS: Record<TicketCategory, string> = {
   general: "General",
   support: "Soporte",
-  reports: "Reportes",
   other: "Otros"
 };
 
 const CATEGORY_EMOJIS: Record<TicketCategory, string> = {
   general: "📋",
   support: "🔧",
-  reports: "📢",
   other: "💬"
 };
 
 const CATEGORY_COLORS: Record<TicketCategory, number> = {
   general: 0x5865f2,
   support: 0x00d9ff,
-  reports: 0xff4444,
   other: 0x95a5a6
 };
 
 /**
- * Obtiene los IDs de los roles de staff configurados.
+ * Gets the IDs of the configured staff roles.
  */
 const getStaffRoleIds = (): Set<string> => {
   return new Set(getEnvVarList("STAFF_ROLE_IDS"));
 };
 
 /**
- * Crea un ticket (canal privado) para un usuario.
+ * Creates a ticket (private channel) for a user.
  */
 export const createTicket = async (
   guild: Guild,
@@ -59,28 +56,28 @@ export const createTicket = async (
   category: TicketCategory
 ): Promise<TextChannel | null> => {
   try {
-    // Obtener la categoría configurada
+    // Get the configured category
     const ticketConfig = await configurationService.getTicketConfig(guild.id);
     const categoryId = ticketConfig?.categoryId;
 
     if (!categoryId) {
-      logger.warn(`No hay categoría configurada para tickets en el servidor ${guild.id}.`);
+      logger.warn(`No category configured for tickets in the server ${guild.id}.`);
       return null;
     }
 
-    // Obtener la categoría
+    // Get the category
     const categoryChannel = (await guild.channels.fetch(categoryId).catch(() => null)) as
       | CategoryChannel
       | null;
 
     if (!categoryChannel || categoryChannel.type !== ChannelType.GuildCategory) {
       logger.warn(
-        `La categoría de tickets (${categoryId}) no existe o no es válida en el servidor ${guild.id}.`
+        `The ticket category (${categoryId}) does not exist or is not valid in the server ${guild.id}.`
       );
       return null;
     }
 
-    // Verificar permisos del bot
+    // Verify bot permissions
     const me = await guild.members.fetchMe();
     const botPermissions = categoryChannel.permissionsFor(me);
 
@@ -92,40 +89,40 @@ export const createTicket = async (
       ])
     ) {
       logger.warn(
-        `El bot no tiene permisos suficientes para crear canales en la categoría ${categoryId} del servidor ${guild.id}.`
+        `The bot does not have sufficient permissions to create channels in the category ${categoryId} in the server ${guild.id}.`
       );
       return null;
     }
 
-    // Obtener usuario
+    // Get user
     const user = await guild.client.users.fetch(userId).catch(() => null);
     if (!user) {
-      logger.warn(`No se pudo obtener el usuario ${userId} para crear el ticket.`);
+      logger.warn(`Could not get the user ${userId} to create the ticket.`);
       return null;
     }
 
-    // Verificar si el usuario ya tiene un ticket abierto
+    // Verify if the user already has an open ticket
     const existingTickets = categoryChannel.children.cache.filter(
       (ch) => ch.type === ChannelType.GuildText && ch.name.startsWith(`ticket-${user.username.toLowerCase()}`)
     );
 
     if (existingTickets.size > 0) {
-      // Ya tiene un ticket abierto
+      // Already has an open ticket
       return existingTickets.first() as TextChannel | null;
     }
 
-    // Obtener roles de staff
+    // Get staff roles
     const staffRoleIds = getStaffRoleIds();
 
-    // Configurar permisos del canal
+    // Configure channel permissions
     const permissionOverwrites = [
-      // Denegar acceso a @everyone
+      // Deny access to @everyone
       {
         id: guild.id,
         deny: [PermissionFlagsBits.ViewChannel],
         type: OverwriteType.Role
       },
-      // Permitir acceso al usuario que creó el ticket
+      // Allow access to the user who created the ticket
       {
         id: userId,
         allow: [
@@ -137,7 +134,7 @@ export const createTicket = async (
       }
     ];
 
-    // Añadir permisos para roles de staff
+    // Add permissions for staff roles
     if (staffRoleIds.size > 0) {
       for (const roleId of staffRoleIds) {
         const role = await guild.roles.fetch(roleId).catch(() => null);
@@ -156,29 +153,29 @@ export const createTicket = async (
       }
     }
 
-    // Crear el canal
+    // Create the channel
     const channelName = `ticket-${user.username.toLowerCase()}`.slice(0, 100); // Discord limita a 100 caracteres
     const channel = await guild.channels.create({
       name: channelName,
       type: ChannelType.GuildText,
       parent: categoryId,
       permissionOverwrites,
-      topic: `Ticket de ${CATEGORY_LABELS[category]} - Creado por ${user.tag}`
+      topic: `Ticket for ${CATEGORY_LABELS[category]} - Created by ${user.tag}`
     });
 
     logger.info(
-      `Ticket creado: ${channel.id} para el usuario ${user.tag} (${userId}) en el servidor ${guild.id}.`
+      `Ticket created: ${channel.id} for the user ${user.tag} (${userId}) in the server ${guild.id}.`
     );
 
     return channel;
   } catch (error) {
-    logger.error(`Error al crear ticket para el usuario ${userId}:`, error);
+    logger.error(`Error creating ticket for the user ${userId}:`, error);
     return null;
   }
 };
 
 /**
- * Envía el mensaje inicial del ticket con los botones de acción.
+ * Sends the initial message of the ticket with the action buttons.
  */
 export const sendTicketInitialMessage = async (
   channel: TextChannel,
@@ -188,51 +185,51 @@ export const sendTicketInitialMessage = async (
   try {
     const user = await channel.client.users.fetch(userId).catch(() => null);
     if (!user) {
-      logger.warn(`No se pudo obtener el usuario ${userId} para el mensaje inicial del ticket.`);
+      logger.warn(`Could not get the user ${userId} for the initial message of the ticket.`);
       return null;
     }
 
     const embed = createBaseEmbed({
       title: `${CATEGORY_EMOJIS[category]} Ticket - ${CATEGORY_LABELS[category]}`,
-      description: `Bienvenido a tu ticket de ${CATEGORY_LABELS[category].toLowerCase()}. Un miembro del staff te ayudará pronto.\n\n**Información del ticket:**`,
+      description: `Welcome to your ticket for ${CATEGORY_LABELS[category].toLowerCase()}. A staff member will help you soon.\n\n**Ticket information:**`,
       color: CATEGORY_COLORS[category],
-      footerText: `Creado por ${user.tag}`
+      footerText: `Created by ${user.tag}`
     })
       .addFields(
         {
-          name: "Usuario",
+          name: "User",
           value: `<@${userId}> (${user.tag})`,
           inline: true
         },
         {
-          name: "Categoría",
+          name: "Category",
           value: `${CATEGORY_EMOJIS[category]} ${CATEGORY_LABELS[category]}`,
           inline: true
         },
         {
-          name: "Estado",
-          value: "⏳ Esperando staff",
+          name: "Status",
+          value: "⏳ Waiting for staff",
           inline: true
         }
       )
       .setTimestamp();
 
-    // Crear botones
+    // Create buttons
     const takeTicketButton = new ButtonBuilder()
       .setCustomId(`ticket_take_${channel.id}`)
-      .setLabel("Tomar Ticket")
+      .setLabel("Take Ticket")
       .setStyle(ButtonStyle.Primary)
       .setEmoji("✋");
 
     const closeTicketButton = new ButtonBuilder()
       .setCustomId(`ticket_close_${channel.id}`)
-      .setLabel("Cerrar Ticket")
+      .setLabel("Close Ticket")
       .setStyle(ButtonStyle.Danger)
       .setEmoji("🔒");
 
     const transcriptButton = new ButtonBuilder()
       .setCustomId(`ticket_transcript_${channel.id}`)
-      .setLabel("Guardar Transcript")
+      .setLabel("Save Transcript")
       .setStyle(ButtonStyle.Secondary)
       .setEmoji("💾");
 
@@ -250,13 +247,13 @@ export const sendTicketInitialMessage = async (
 
     return message;
   } catch (error) {
-    logger.error(`Error al enviar mensaje inicial del ticket en ${channel.id}:`, error);
+    logger.error(`Error sending initial message of the ticket in ${channel.id}:`, error);
     return null;
   }
 };
 
 /**
- * Actualiza el embed del ticket para mostrar que fue tomado por un staff.
+ * Updates the ticket embed to show that it has been taken by a staff member.
  */
 export const updateTicketEmbedTaken = async (
   message: Message,
@@ -273,41 +270,41 @@ export const updateTicketEmbedTaken = async (
       ...(embed.footer?.text && { footerText: embed.footer.text })
     });
 
-    // Copiar todos los campos existentes
+    // Copy all existing fields
     if (embed.fields) {
       for (const field of embed.fields) {
-        if (field.name !== "Estado") {
+        if (field.name !== "Status") {
           updatedEmbed.addFields(field);
         }
       }
     }
 
-    // Actualizar campo de estado
+    // Update status field
     updatedEmbed.addFields({
-      name: "Estado",
-      value: `✅ Atendido por <@${staffUser.id}> (${staffUser.tag})`,
+      name: "Status",
+      value: `✅ Taken by <@${staffUser.id}> (${staffUser.tag})`,
       inline: true
     });
 
-    // Actualizar el mensaje (mantener los botones)
+    // Update the message (keep the buttons)
     await message.edit({ embeds: [updatedEmbed] });
   } catch (error) {
-    logger.error("Error al actualizar embed del ticket:", error);
+    logger.error("Error updating ticket embed:", error);
   }
 };
 
 /**
- * Crea el modal para cerrar un ticket con motivo.
+ * Creates the modal to close a ticket with a reason.
  */
 export const createCloseTicketModal = (channelId: string) => {
   const modal = new ModalBuilder()
     .setCustomId(`close_ticket_modal_${channelId}`)
-    .setTitle("Cerrar Ticket");
+    .setTitle("Close Ticket");
 
   const reasonInput = new TextInputBuilder()
     .setCustomId("close_reason")
-    .setLabel("Motivo del Cierre")
-    .setPlaceholder("Describe el motivo por el cual se cierra este ticket...")
+    .setLabel("Close Reason")
+    .setPlaceholder("Describe the reason for closing this ticket...")
     .setStyle(TextInputStyle.Paragraph)
     .setRequired(true)
     .setMinLength(5)
@@ -321,7 +318,7 @@ export const createCloseTicketModal = (channelId: string) => {
 };
 
 /**
- * Cierra un ticket y envía el log al canal configurado.
+ * Closes a ticket and sends the log to the configured channel.
  */
 export const closeTicket = async (
   channel: TextChannel,
@@ -332,18 +329,18 @@ export const closeTicket = async (
     const guild = channel.guild;
     const ticketConfig = await configurationService.getTicketConfig(guild.id);
 
-    // Obtener información del ticket desde el embed inicial
-    // Buscar el mensaje inicial que tiene el embed con la información del ticket
+    // Get ticket information from the initial embed
+    // Search for the initial message that has the embed with the ticket information
     const messages = await channel.messages.fetch({ limit: 50 });
     let userId: string | null = null;
     let category: TicketCategory = "general";
 
-    // Buscar el mensaje inicial del ticket (el que tiene el embed con los botones)
+    // Search for the initial message of the ticket (the one that has the embed with the buttons)
     const initialMessage = messages.find((m) => m.embeds.length > 0 && m.components.length > 0);
 
     if (initialMessage?.embeds[0]) {
       const embed = initialMessage.embeds[0];
-      const userField = embed.fields?.find((f) => f.name === "Usuario");
+      const userField = embed.fields?.find((f) => f.name === "User");
       if (userField?.value) {
         const match = userField.value.match(/<@(\d+)>/);
         if (match && match[1]) {
@@ -351,19 +348,18 @@ export const closeTicket = async (
         }
       }
 
-      const categoryField = embed.fields?.find((f) => f.name === "Categoría");
+      const categoryField = embed.fields?.find((f) => f.name === "Category");
       if (categoryField?.value) {
         if (categoryField.value.includes("General")) category = "general";
-        else if (categoryField.value.includes("Soporte")) category = "support";
-        else if (categoryField.value.includes("Reportes")) category = "reports";
-        else if (categoryField.value.includes("Otros")) category = "other";
+        else if (categoryField.value.includes("Support")) category = "support";
+        else if (categoryField.value.includes("Other")) category = "other";
       }
     }
 
-    // Si no se encontró el userId en el embed, intentar obtenerlo del nombre del canal
-    // El formato es ticket-{username}, pero mejor intentar obtenerlo del primer mensaje
+    // If the userId was not found in the embed, try to get it from the channel name
+    // The format is ticket-{username}, but better try to get it from the first message
     if (!userId) {
-      // Buscar el primer mensaje del bot que menciona al usuario
+      // Search for the first message of the bot that mentions the user
       const botMessages = messages.filter((m) => m.author.id === channel.client.user?.id);
       for (const msg of botMessages.values()) {
         if (msg.content && msg.content.includes("<@")) {
@@ -376,17 +372,17 @@ export const closeTicket = async (
       }
     }
 
-    // Enviar mensaje de cierre
+    // Send close message
     const closeEmbed = createBaseEmbed({
-      title: "🔒 Ticket Cerrado",
-      description: `Este ticket ha sido cerrado por <@${closer.id}> (${closer.tag}).`,
+      title: "🔒 Ticket Closed",
+      description: `This ticket has been closed by <@${closer.id}> (${closer.tag}).`,
       color: Colors.Red,
-      footerText: `Cerrado por ${closer.tag}`
+      footerText: `Closed by ${closer.tag}`
     });
 
     if (reason) {
       closeEmbed.addFields({
-        name: "Motivo del Cierre",
+        name: "Close Reason",
         value: reason
       });
     }
@@ -395,10 +391,10 @@ export const closeTicket = async (
 
     await channel.send({ embeds: [closeEmbed] });
 
-    // Esperar un momento antes de eliminar el canal
+    // Wait a moment before deleting the channel
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Enviar log si está configurado
+    // Send log if configured
     if (ticketConfig?.logChannelId) {
       const logChannel = (await guild.channels
         .fetch(ticketConfig.logChannelId)
@@ -406,36 +402,36 @@ export const closeTicket = async (
 
       if (logChannel && logChannel.isTextBased() && !logChannel.isDMBased()) {
         const logEmbed = createBaseEmbed({
-          title: "📋 Ticket Cerrado",
-          description: `Se cerró un ticket en ${channel.name}`,
+          title: "📋 Ticket Closed",
+          description: `A ticket was closed in ${channel.name}`,
           color: Colors.Orange,
-          footerText: `Canal ID: ${channel.id}`
+          footerText: `Channel ID: ${channel.id}`
         })
           .addFields(
             {
-              name: "Usuario",
-              value: userId ? `<@${userId}>` : "Desconocido",
+              name: "User",
+              value: userId ? `<@${userId}>` : "Unknown",
               inline: true
             },
             {
-              name: "Categoría",
+              name: "Category",
               value: `${CATEGORY_EMOJIS[category]} ${CATEGORY_LABELS[category]}`,
               inline: true
             },
             {
-              name: "Cerrado por",
+              name: "Closed by",
               value: `<@${closer.id}> (${closer.tag})`,
               inline: true
             },
             {
-              name: "Fecha de cierre",
+              name: "Close Date",
               value: `<t:${Math.floor(Date.now() / 1000)}:F>`,
               inline: false
             },
             ...(reason
               ? [
                   {
-                    name: "Motivo del Cierre",
+                    name: "Close Reason",
                     value: reason,
                     inline: false
                   }
@@ -445,25 +441,25 @@ export const closeTicket = async (
           .setTimestamp();
 
         await logChannel.send({ embeds: [logEmbed] }).catch((error) => {
-          logger.warn(`No se pudo enviar log de ticket cerrado:`, error);
+          logger.warn(`Could not send close log of ticket:`, error);
         });
       }
     }
 
-    // Eliminar el canal
-    await channel.delete(`Ticket cerrado por ${closer.tag}`);
+    // Delete the channel
+    await channel.delete(`Ticket closed by ${closer.tag}`);
 
     logger.info(
-      `Ticket ${channel.id} cerrado por ${closer.tag} en el servidor ${guild.id}.`
+      `Ticket ${channel.id} closed by ${closer.tag} in the server ${guild.id}.`
     );
   } catch (error) {
-    logger.error(`Error al cerrar el ticket ${channel.id}:`, error);
+    logger.error(`Error closing the ticket ${channel.id}:`, error);
     throw error;
   }
 };
 
 /**
- * Genera y guarda el transcript de un ticket.
+ * Generates and saves the transcript of a ticket.
  */
 export const generateTranscript = async (
   channel: TextChannel,
@@ -474,7 +470,7 @@ export const generateTranscript = async (
     const ticketConfig = await configurationService.getTicketConfig(guild.id);
 
     if (!ticketConfig?.transcriptChannelId) {
-      throw new Error("No hay canal de transcripts configurado.");
+      throw new Error("No transcript channel configured.");
     }
 
     const transcriptChannel = (await guild.channels
@@ -482,10 +478,10 @@ export const generateTranscript = async (
       .catch(() => null)) as TextChannel | null;
 
     if (!transcriptChannel || !transcriptChannel.isTextBased() || transcriptChannel.isDMBased()) {
-      throw new Error("El canal de transcripts no es válido.");
+      throw new Error("The transcript channel is not valid.");
     }
 
-    // Obtener todos los mensajes del ticket
+    // Get all messages of the ticket
     const messages: Message[] = [];
     let lastMessageId: string | undefined;
 
@@ -503,61 +499,60 @@ export const generateTranscript = async (
       if (fetched.size < 100) break;
     }
 
-    // Ordenar mensajes por fecha (más antiguo primero)
+    // Sort messages by date (oldest first)
     messages.reverse();
 
-    // Obtener información del ticket
+    // Get ticket information
     let userId: string | null = null;
     let category: TicketCategory = "general";
     const initialMessage = messages.find((m) => m.embeds.length > 0);
     if (initialMessage?.embeds[0]) {
       const embed = initialMessage.embeds[0];
-      const userField = embed.fields?.find((f) => f.name === "Usuario");
+      const userField = embed.fields?.find((f) => f.name === "User");
       if (userField?.value) {
         const match = userField.value.match(/<@(\d+)>/);
         if (match && match[1]) userId = match[1];
       }
 
-      const categoryField = embed.fields?.find((f) => f.name === "Categoría");
+      const categoryField = embed.fields?.find((f) => f.name === "Category");
       if (categoryField?.value) {
         if (categoryField.value.includes("General")) category = "general";
-        else if (categoryField.value.includes("Soporte")) category = "support";
-        else if (categoryField.value.includes("Reportes")) category = "reports";
-        else if (categoryField.value.includes("Otros")) category = "other";
+        else if (categoryField.value.includes("Support")) category = "support";
+        else if (categoryField.value.includes("Other")) category = "other";
       }
     }
 
-    // Generar transcript en formato texto
+    // Generate transcript in text format
     const transcriptLines: string[] = [];
     transcriptLines.push("=".repeat(50));
-    transcriptLines.push(`TRANSCRIPT DEL TICKET`);
+    transcriptLines.push(`TICKET TRANSCRIPT`);
     transcriptLines.push("=".repeat(50));
-    transcriptLines.push(`Canal: ${channel.name} (${channel.id})`);
+    transcriptLines.push(`Channel: ${channel.name} (${channel.id})`);
     transcriptLines.push(`Categoría: ${CATEGORY_LABELS[category]}`);
-    transcriptLines.push(`Usuario: ${userId ? `<@${userId}>` : "Desconocido"}`);
-    transcriptLines.push(`Generado por: ${requester.tag} (${requester.id})`);
-    transcriptLines.push(`Fecha: ${new Date().toISOString()}`);
+    transcriptLines.push(`User: ${userId ? `<@${userId}>` : "Unknown"}`);
+    transcriptLines.push(`Generated by: ${requester.tag} (${requester.id})`);
+    transcriptLines.push(`Date: ${new Date().toISOString()}`);
     transcriptLines.push("=".repeat(50));
     transcriptLines.push("");
 
     for (const message of messages) {
       const timestamp = new Date(message.createdTimestamp).toISOString();
       const author = message.author.tag;
-      const content = message.content || "*[Sin contenido]*";
+      const content = message.content || "*[No content]*";
 
       transcriptLines.push(`[${timestamp}] ${author}: ${content}`);
 
-      // Añadir embeds si existen
+      // Add embeds if they exist
       if (message.embeds.length > 0) {
         for (const embed of message.embeds) {
-          transcriptLines.push(`  [EMBED] ${embed.title || "Sin título"}`);
+          transcriptLines.push(`  [EMBED] ${embed.title || "No title"}`);
           if (embed.description) {
             transcriptLines.push(`  ${embed.description}`);
           }
         }
       }
 
-      // Añadir attachments si existen
+      // Add attachments if they exist
       if (message.attachments.size > 0) {
         for (const attachment of message.attachments.values()) {
           transcriptLines.push(`  [ATTACHMENT] ${attachment.url}`);
@@ -568,61 +563,61 @@ export const generateTranscript = async (
     }
 
     transcriptLines.push("=".repeat(50));
-    transcriptLines.push("FIN DEL TRANSCRIPT");
+    transcriptLines.push("END OF TRANSCRIPT");
     transcriptLines.push("=".repeat(50));
 
     const transcriptText = transcriptLines.join("\n");
 
-    // Crear embed para el transcript
+    // Create embed for the transcript
     const transcriptEmbed = createBaseEmbed({
-      title: "💾 Transcript del Ticket",
-      description: `Transcript generado para el ticket ${channel.name}`,
+      title: "💾 Ticket Transcript",
+      description: `Transcript generated for the ticket ${channel.name}`,
       color: 0x5865f2,
-      footerText: `Generado por ${requester.tag}`
+      footerText: `Generated by ${requester.tag}`
     })
       .addFields(
         {
-          name: "Canal",
+          name: "Channel",
           value: `${channel.name} (${channel.id})`,
           inline: true
         },
         {
-          name: "Categoría",
+          name: "Category",
           value: `${CATEGORY_EMOJIS[category]} ${CATEGORY_LABELS[category]}`,
           inline: true
         },
         {
-          name: "Usuario",
-          value: userId ? `<@${userId}>` : "Desconocido",
+          name: "User",
+          value: userId ? `<@${userId}>` : "Unknown",
           inline: true
         },
         {
-          name: "Total de mensajes",
+          name: "Total messages",
           value: `${messages.length}`,
           inline: true
         },
         {
-          name: "Generado por",
+          name: "Generated by",
           value: `<@${requester.id}> (${requester.tag})`,
           inline: true
         }
       )
       .setTimestamp();
 
-    // Enviar embed primero (sin el transcript, ya que puede ser muy largo)
+    // Send embed first (without the transcript, since it can be very long)
     await transcriptChannel.send({ embeds: [transcriptEmbed] });
 
-    // Enviar transcript en partes (Discord tiene límite de 2000 caracteres por mensaje)
-    const maxLength = 1900; // Dejar margen para los backticks y formato
+    // Send transcript in parts (Discord has a limit of 2000 characters per message)
+    const maxLength = 1900; // Leave margin for the backticks and format
     const transcriptWithCode = `\`\`\`\n${transcriptText}\n\`\`\``;
 
     if (transcriptWithCode.length <= maxLength) {
-      // Si cabe en un solo mensaje, enviarlo directamente
+      // If it fits in a single message, send it directly
       await transcriptChannel.send({
         content: transcriptWithCode
       });
     } else {
-      // Dividir el transcript en partes
+      // Divide the transcript into parts
       const parts: string[] = [];
       let currentPart = "";
       const lines = transcriptText.split("\n");
@@ -630,7 +625,7 @@ export const generateTranscript = async (
       for (const line of lines) {
         const lineWithNewline = currentPart ? `\n${line}` : line;
         if (currentPart.length + lineWithNewline.length + 10 > maxLength) {
-          // +10 para los backticks y formato
+          // +10 for the backticks and format
           if (currentPart) {
             parts.push(`\`\`\`\n${currentPart}\n\`\`\``);
           }
@@ -654,10 +649,10 @@ export const generateTranscript = async (
     }
 
     logger.info(
-      `Transcript generado para el ticket ${channel.id} por ${requester.tag} en el servidor ${guild.id}.`
+      `Transcript generated for the ticket ${channel.id} by ${requester.tag} in the server ${guild.id}.`
     );
   } catch (error) {
-    logger.error(`Error al generar transcript del ticket ${channel.id}:`, error);
+    logger.error(`Error generating transcript of the ticket ${channel.id}:`, error);
     throw error;
   }
 };

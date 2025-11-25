@@ -32,44 +32,44 @@ const ensureHierarchy = (moderator: GuildMember, target?: GuildMember | null) =>
 
 const builder = new SlashCommandBuilder()
   .setName("kick")
-  .setDescription("Expulsa a un miembro del servidor y registra la acción.")
+  .setDescription("Kick a member from the server and record the action.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
   .addUserOption((option) =>
-    option.setName("usuario").setDescription("Miembro a expulsar.").setRequired(true)
+    option.setName("user").setDescription("User to kick.").setRequired(true)
   )
   .addStringOption((option) =>
     option
-      .setName("razon")
-      .setDescription("Motivo del kick.")
+      .setName("reason")
+      .setDescription("Reason for the kick.")
       .setMinLength(3)
       .setMaxLength(512)
       .setRequired(true)
   )
   .addStringOption((option) =>
     option
-      .setName("evidencia")
-      .setDescription("URLs o referencias, separadas por espacios o comas (máximo 5).")
+      .setName("evidence")
+      .setDescription("URLs or references, separated by spaces or commas (maximum 5).")
       .setRequired(false)
   );
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild() || !interaction.guild) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       ephemeral: true
     });
     return;
   }
 
   const guild = interaction.guild;
-  const targetUser = interaction.options.getUser("usuario", true);
-  const reason = interaction.options.getString("razon", true).trim();
-  const evidence = formatEvidence(interaction.options.getString("evidencia"));
+  const targetUser = interaction.options.getUser("user", true);
+  const reason = interaction.options.getString("reason", true).trim();
+  const evidence = formatEvidence(interaction.options.getString("evidence"));
 
   if (targetUser.bot) {
     await interaction.reply({
-      content: "No puedes expulsar a un bot con este comando.",
+      content: "You cannot kick a bot with this command.",
       ephemeral: true
     });
     return;
@@ -80,7 +80,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!targetMember) {
     await interaction.reply({
-      content: "No pude obtener al miembro especificado. Es posible que ya haya abandonado el servidor.",
+      content: "I was unable to get the specified member. They may have already left the server.",
       ephemeral: true
     });
     return;
@@ -88,13 +88,13 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!ensureHierarchy(moderatorMember, targetMember)) {
     await interaction.reply({
-      content: "No puedes expulsar a este miembro. Verifica la jerarquía de roles.",
+      content: "You cannot kick this member. Verify the role hierarchy.",
       ephemeral: true
     });
     return;
   }
 
-  await targetMember.kick(`Kick por ${interaction.user.tag}: ${reason}`);
+  await targetMember.kick(`Kick by ${interaction.user.tag}: ${reason}`);
 
   const moderationCase = await createModerationCase({
     guildId: guild.id,
@@ -106,35 +106,35 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   });
 
   const embed = createBaseEmbed({
-    title: `Kick aplicado: caso #${moderationCase.caseId}`,
-    description: `${targetUser.tag} ha sido expulsado del servidor.`,
-    footerText: "Usa /infractions para revisar el historial completo."
+      title: `Kick applied: case #${moderationCase.caseId}`,
+    description: `${targetUser.tag} has been kicked from the server.`,
+    footerText: "Use /infractions to review the full history."
   }).addFields(
     {
-      name: "Moderador",
+      name: "Moderator",
       value: `<@${interaction.user.id}>`,
       inline: true
     },
     {
-      name: "Miembro",
+      name: "Member",
       value: `${targetUser.tag} (${targetUser.id})`,
       inline: true
     },
     {
-      name: "Motivo",
+      name: "Reason",
       value: reason
     }
   );
 
   if (evidence.length) {
     embed.addFields({
-      name: "Evidencia",
+      name: "Evidence",
       value: evidence.map((item, index) => `${index + 1}. ${item}`).join("\n")
     });
   }
 
   await interaction.reply({
-    content: "Kick ejecutado correctamente.",
+    content: "Kick executed successfully.",
     embeds: [embed],
     ephemeral: true
   });
@@ -152,7 +152,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
       })
     )
     .catch((error) => {
-      logger.debug("Error al obtener invite o enviar DM en kick:", error);
+      logger.debug("Error getting invite or sending DM in kick:", error);
     });
 
   // Enviar log al canal de moderación

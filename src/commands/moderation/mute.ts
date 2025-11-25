@@ -35,37 +35,37 @@ const ensureHierarchy = (moderator: GuildMember, target?: GuildMember | null) =>
 
 const builder = new SlashCommandBuilder()
   .setName("mute")
-  .setDescription("Silencia a un miembro aplicando el rol configurado.")
+  .setDescription("Mute a member applying the configured role.")
   .setDMPermission(false)
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
   .addUserOption((option) =>
-    option.setName("usuario").setDescription("Miembro a silenciar.").setRequired(true)
+    option.setName("user").setDescription("User to mute.").setRequired(true)
   )
   .addStringOption((option) =>
     option
-      .setName("razon")
-      .setDescription("Motivo del mute.")
+      .setName("reason")
+      .setDescription("Reason for the mute.")
       .setMinLength(3)
       .setMaxLength(512)
       .setRequired(true)
   )
   .addStringOption((option) =>
     option
-      .setName("duracion")
-      .setDescription("Duración (ej: 30m, 2h, 1d). Máximo 30 días.")
+      .setName("duration")
+      .setDescription("Duration (e.g: 30m, 2h, 1d). Maximum 30 days.")
       .setRequired(false)
   )
   .addStringOption((option) =>
     option
-      .setName("evidencia")
-      .setDescription("URLs o referencias, separadas por espacios o comas (máximo 5).")
+      .setName("evidence")
+      .setDescription("URLs or references, separated by spaces or commas (maximum 5).")
       .setRequired(false)
   );
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!interaction.inGuild() || !interaction.guild) {
     await interaction.reply({
-      content: "Este comando solo puede ejecutarse dentro de un servidor.",
+      content: "This command can only be executed within a server.",
       ephemeral: true
     });
     return;
@@ -74,7 +74,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   const moderationConfig = await configurationService.getModerationConfig(interaction.guildId);
   if (!moderationConfig?.muteRoleId) {
     await interaction.reply({
-      content: "Aún no se ha configurado el rol de mute. Usa /setup-mute-role antes de continuar.",
+      content: "The mute role has not been configured yet. Use /setup-mute-role before continuing.",
       ephemeral: true
     });
     return;
@@ -84,20 +84,20 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   if (!muteRole) {
     await interaction.reply({
       content:
-        "El rol configurado para los mutes ya no existe. Configúralo nuevamente con /setup-mute-role.",
+        "The role configured for mutes no longer exists. Configure it again with /setup-mute-role.",
       ephemeral: true
     });
     return;
   }
 
-  const targetUser = interaction.options.getUser("usuario", true);
-  const reason = interaction.options.getString("razon", true).trim();
-  const durationInput = interaction.options.getString("duracion");
-  const evidence = formatEvidence(interaction.options.getString("evidencia"));
+  const targetUser = interaction.options.getUser("user", true);
+  const reason = interaction.options.getString("reason", true).trim();
+  const durationInput = interaction.options.getString("duration");
+  const evidence = formatEvidence(interaction.options.getString("evidence"));
 
   if (targetUser.bot) {
     await interaction.reply({
-      content: "No puedes silenciar a un bot.",
+      content: "You cannot mute a bot.",
       ephemeral: true
     });
     return;
@@ -109,7 +109,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!ensureHierarchy(moderatorMember, targetMember ?? null)) {
     await interaction.reply({
-      content: "No puedes silenciar a este miembro. Verifica la jerarquía de roles.",
+      content: "You cannot mute this member. Verify the role hierarchy.",
       ephemeral: true
     });
     return;
@@ -117,7 +117,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (!targetMember) {
     await interaction.reply({
-      content: "No pude obtener al miembro especificado. Inténtalo nuevamente.",
+      content: "I was unable to get the specified member. Try again.",
       ephemeral: true
     });
     return;
@@ -125,7 +125,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   if (targetMember.roles.cache.has(muteRole.id)) {
     await interaction.reply({
-      content: "El miembro ya está silenciado.",
+      content: "The member is already muted.",
       ephemeral: true
     });
     return;
@@ -139,7 +139,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     if (!parsed) {
       await interaction.reply({
         content:
-          "Duración inválida. Usa formatos como 30m, 2h, 1d y un máximo de 30 días.",
+          "Invalid duration. Use formats like 30m, 2h, 1d and a maximum of 30 days.",
         ephemeral: true
       });
       return;
@@ -148,7 +148,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     expiresAt = new Date(Date.now() + parsed);
   }
 
-  await targetMember.roles.add(muteRole.id, `Mute aplicado por ${interaction.user.tag}: ${reason}`);
+  await targetMember.roles.add(muteRole.id, `Mute applied by ${interaction.user.tag}: ${reason}`);
 
   const moderationPayload: CreateModerationCaseInput = {
     guildId: guild.id,
@@ -188,14 +188,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           return;
         }
 
-        await member.roles.remove(freshRole, "Mute expirado automáticamente.");
+        await member.roles.remove(freshRole, "Mute expired automatically.");
 
         const unmuteCase = await createModerationCase({
           guildId: freshGuild.id,
           userId: member.id,
           moderatorId: interaction.client.user?.id ?? "system",
           type: "unmute",
-          reason: "Mute expirado automáticamente.",
+          reason: "Mute expired automatically.",
           metadata: {
             muteRoleId: freshRole.id,
             automated: true
@@ -209,7 +209,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           guildName: freshGuild.name,
           type: "unmute",
           caseId: unmuteCase.caseId,
-          reason: "Mute expirado automáticamente.",
+          reason: "Mute expired automatically.",
           inviteUrl
         });
 
@@ -225,14 +225,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           },
           moderator: {
             id: interaction.client.user?.id ?? "system",
-            tag: interaction.client.user?.tag ?? "Sistema"
+            tag: interaction.client.user?.tag ?? "System"
           },
-          reason: "Mute expirado automáticamente.",
+          reason: "Mute expired automatically.",
           metadata: { automated: true }
         });
       } catch (error) {
         logger.error(
-          `Error al intentar remover automáticamente el mute de ${targetUser.id} en ${guild.id}`,
+          `Error trying to automatically remove the mute of ${targetUser.id} in ${guild.id}`,
           error
         );
       }
@@ -240,42 +240,42 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   }
 
   const embed = createBaseEmbed({
-    title: `Mute aplicado: caso #${moderationCase.caseId}`,
-    description: `${targetUser} fue silenciado.`,
-    footerText: "Recuerda remover el rol manualmente si no definiste duración."
+    title: `Mute applied: case #${moderationCase.caseId}`,
+    description: `${targetUser} has been muted.`,
+    footerText: "Remember to remove the role manually if you did not define a duration."
   }).addFields(
     {
-      name: "Moderador",
+      name: "Moderator",
       value: `<@${interaction.user.id}>`,
       inline: true
     },
     {
-      name: "Duración",
-      value: durationMs ? formatDuration(durationMs) : "Indefinido",
+      name: "Duration",
+      value: durationMs ? formatDuration(durationMs) : "Indefinite",
       inline: true
     },
     {
-      name: "Motivo",
+      name: "Reason",
       value: reason
     }
   );
 
   if (expiresAt) {
     embed.addFields({
-      name: "Expira",
+      name: "Expires",
       value: `<t:${Math.floor(expiresAt.getTime() / 1000)}:R>`
     });
   }
 
   if (evidence.length) {
     embed.addFields({
-      name: "Evidencia",
+      name: "Evidence",
       value: evidence.map((item, index) => `${index + 1}. ${item}`).join("\n")
     });
   }
 
   await interaction.reply({
-    content: "Se aplicó el mute correctamente.",
+    content: "Mute applied successfully.",
     embeds: [embed],
     ephemeral: true
   });
@@ -305,7 +305,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
       }
     })
     .catch((error) => {
-      logger.debug("Error al obtener invite o enviar DM en mute:", error);
+      logger.debug("Error getting invite or sending DM in mute:", error);
     });
 
   // Enviar log al canal de moderación
