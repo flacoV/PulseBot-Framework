@@ -24,8 +24,8 @@ export type TicketCategory = "general" | "support" | "other";
 
 const CATEGORY_LABELS: Record<TicketCategory, string> = {
   general: "General",
-  support: "Soporte",
-  other: "Otros"
+  support: "Support",
+  other: "Other"
 };
 
 const CATEGORY_EMOJIS: Record<TicketCategory, string> = {
@@ -48,7 +48,72 @@ const getStaffRoleIds = (): Set<string> => {
 };
 
 /**
+ * Checks if a user already has an open ticket in the server.
+ * Searches across all channels to ensure no duplicate tickets.
+ * Verifies both by channel name pattern and by permission overwrites to ensure accuracy.
+ */
+export const hasOpenTicket = async (guild: Guild, userId: string): Promise<TextChannel | null> => {
+  try {
+    // Get user to check username
+    const user = await guild.client.users.fetch(userId).catch(() => null);
+    if (!user) {
+      return null;
+    }
+
+    // Search all text channels in the guild
+    const channels = await guild.channels.fetch();
+    const textChannels = channels.filter(
+      (ch) => ch?.type === ChannelType.GuildText
+    ) as Map<string, TextChannel>;
+
+    const usernameLower = user.username.toLowerCase();
+
+    // Check each channel that starts with "ticket-"
+    for (const channel of textChannels.values()) {
+      if (!channel.name.startsWith("ticket-")) {
+        continue;
+      }
+
+      // Verify the channel still exists and is accessible
+      try {
+        await channel.fetch();
+      } catch {
+        // Channel might be deleted or inaccessible, continue searching
+        continue;
+      }
+
+      // Check if user has ViewChannel permission (they should if it's their ticket)
+      const permissions = channel.permissionsFor(userId);
+      if (!permissions?.has(PermissionFlagsBits.ViewChannel)) {
+        continue;
+      }
+
+      // Verify this is the user's ticket by checking:
+      // 1. Channel name matches user's username pattern
+      // 2. User has member-specific permission overwrite (not just role-based)
+      const nameMatches = channel.name.includes(usernameLower) || channel.name === `ticket-${usernameLower}`;
+      
+      // Check permission overwrites to see if user is explicitly granted access as a member
+      const userOverwrite = channel.permissionOverwrites.cache.get(userId);
+      const hasMemberAccess = userOverwrite?.type === OverwriteType.Member && 
+                              userOverwrite.allow.has(PermissionFlagsBits.ViewChannel);
+
+      // If either condition is true, this is likely the user's ticket
+      if (nameMatches || hasMemberAccess) {
+        return channel;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    logger.error(`Error checking for open tickets for user ${userId}:`, error);
+    return null;
+  }
+};
+
+/**
  * Creates a ticket (private channel) for a user.
+ * Returns the channel if successful, or null if there's an error or the user already has an open ticket.
  */
 export const createTicket = async (
   guild: Guild,
@@ -56,6 +121,15 @@ export const createTicket = async (
   category: TicketCategory
 ): Promise<TextChannel | null> => {
   try {
+    // Check if user already has an open ticket
+    const existingTicket = await hasOpenTicket(guild, userId);
+    if (existingTicket) {
+      logger.info(
+        `User ${userId} already has an open ticket (${existingTicket.id}) in server ${guild.id}.`
+      );
+      return null; // Return null to indicate ticket creation was blocked
+    }
+
     // Get the configured category
     const ticketConfig = await configurationService.getTicketConfig(guild.id);
     const categoryId = ticketConfig?.categoryId;
@@ -99,16 +173,6 @@ export const createTicket = async (
     if (!user) {
       logger.warn(`Could not get the user ${userId} to create the ticket.`);
       return null;
-    }
-
-    // Verify if the user already has an open ticket
-    const existingTickets = categoryChannel.children.cache.filter(
-      (ch) => ch.type === ChannelType.GuildText && ch.name.startsWith(`ticket-${user.username.toLowerCase()}`)
-    );
-
-    if (existingTickets.size > 0) {
-      // Already has an open ticket
-      return existingTickets.first() as TextChannel | null;
     }
 
     // Get staff roles

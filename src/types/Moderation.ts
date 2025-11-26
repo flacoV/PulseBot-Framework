@@ -16,7 +16,7 @@ export interface ModerationStats {
   totalCases: number;
   typeCounts: Partial<Record<ModerationActionType, number>>;
   lastAction?: {
-    caseId: number;
+    caseId?: number;
     type: ModerationActionType;
     reason: string;
     createdAt: Date;

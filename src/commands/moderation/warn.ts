@@ -87,19 +87,22 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     return;
   }
 
-  const moderationCase = await createModerationCase({
-    guildId: guild.id,
-    userId: targetUser.id,
-    moderatorId: interaction.user.id,
-    type: "warn",
-    reason,
-    evidenceUrls: evidence
-  });
+  await createModerationCase(
+    {
+      guildId: guild.id,
+      userId: targetUser.id,
+      moderatorId: interaction.user.id,
+      type: "warn",
+      reason,
+      evidenceUrls: evidence
+    },
+    { generateCaseId: false }
+  );
 
   const stats = await getUserStats(guild.id, targetUser.id);
 
   const embed = createBaseEmbed({
-    title: `Warning #${moderationCase.caseId}`,
+    title: "Warning registered",
     description: `A warning was registered for ${targetUser}.\n> ${reason}`,
     footerText: "Use /infractions to review the full history."
   })
@@ -129,9 +132,10 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   }
 
   if (stats.lastAction) {
+    const caseIdText = stats.lastAction.caseId ? `#${stats.lastAction.caseId} · ` : "";
     embed.addFields({
       name: "Last action registered",
-      value: `#${stats.lastAction.caseId} · ${stats.lastAction.type} · <t:${Math.floor(
+      value: `${caseIdText}${stats.lastAction.type} · <t:${Math.floor(
         stats.lastAction.createdAt.getTime() / 1000
       )}:R>`
     });
@@ -150,7 +154,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         user: targetUser,
         guildName: guild.name,
         type: "warn",
-        caseId: moderationCase.caseId,
         reason,
         inviteUrl
       })
@@ -163,7 +166,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   await logModerationAction({
     guild,
     actionType: "warn",
-    caseId: moderationCase.caseId,
     targetUser: {
       id: targetUser.id,
       tag: targetUser.tag,

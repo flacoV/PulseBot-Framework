@@ -103,19 +103,22 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     `Mute removed by ${interaction.user.tag}: ${reason}`
   );
 
-  const moderationCase = await createModerationCase({
-    guildId: guild.id,
-    userId: targetUser.id,
-    moderatorId: interaction.user.id,
-    type: "unmute",
-    reason,
-    metadata: {
-      muteRoleId: muteRole.id
-    }
-  });
+  await createModerationCase(
+    {
+      guildId: guild.id,
+      userId: targetUser.id,
+      moderatorId: interaction.user.id,
+      type: "unmute",
+      reason,
+      metadata: {
+        muteRoleId: muteRole.id
+      }
+    },
+    { generateCaseId: false }
+  );
 
   const embed = createBaseEmbed({
-    title: `Mute removed: case #${moderationCase.caseId}`,
+    title: "Mute removed",
     description: `${targetUser} can now speak again.`,
     footerText: "Check /infractions to see the full history."
   }).addFields(
@@ -143,7 +146,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         user: targetUser,
         guildName: guild.name,
         type: "unmute",
-        caseId: moderationCase.caseId,
         reason,
         inviteUrl
       })
@@ -156,7 +158,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   await logModerationAction({
     guild,
     actionType: "unmute",
-    caseId: moderationCase.caseId,
     targetUser: {
       id: targetUser.id,
       tag: targetUser.tag,
@@ -167,7 +168,9 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
       tag: interaction.user.tag
     },
     reason,
-    metadata: moderationCase.metadata
+    metadata: {
+      muteRoleId: muteRole.id
+    }
   });
 };
 

@@ -125,10 +125,10 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   if (durationMs) payload.durationMs = durationMs;
   if (expiresAt) payload.expiresAt = expiresAt;
 
-  const moderationCase = await createModerationCase(payload);
+  await createModerationCase(payload, { generateCaseId: false });
 
   const embed = createBaseEmbed({
-    title: `Ban applied: case #${moderationCase.caseId}`,
+    title: "Ban applied",
     description: `${targetUser.tag} has been banned from the server.`,
     footerText: durationMs
       ? "The ban is temporary according to the duration indicated."
@@ -162,53 +162,98 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
   }
 
-  // Aplicamos el ban primero
+  // Enviar DM ANTES de aplicar el ban para asegurar que el usuario lo reciba
+  try {
+    const inviteUrl = await getOrCreatePermanentInvite(guild);
+    if (durationMs) {
+      await sendModerationDm({
+        user: targetUser,
+        guildName: guild.name,
+        type: "ban",
+        reason,
+        durationText: formatDuration(durationMs),
+        inviteUrl
+      });
+    } else {
+      await sendModerationDm({
+        user: targetUser,
+        guildName: guild.name,
+        type: "ban",
+        reason,
+        inviteUrl
+      });
+    }
+  } catch (error) {
+    // Si falla el DM, continuamos con el ban de todas formas
+    logger.debug("Error getting invite or sending DM in ban (before ban action):", error);
+  }
+
+  // Aplicamos el ban después de enviar el DM
   await guild.members.ban(targetUser.id, {
     reason: `Ban by ${interaction.user.tag}: ${reason}`
   });
 
   if (expiresAt && durationMs) {
-    setTimeout(async () => {
+    // Store timeout reference to prevent garbage collection
+    const timeoutId = setTimeout(async () => {
       try {
-        const freshGuild = await interaction.client.guilds.fetch(guild.id).catch(() => null);
-        if (!freshGuild) return;
+        logger.info(
+          `Processing automatic unban for user ${targetUser.id} in guild ${guild.id} after ${durationMs}ms`
+        );
 
+        const freshGuild = await interaction.client.guilds.fetch(guild.id).catch(() => null);
+        if (!freshGuild) {
+          logger.warn(`Could not fetch guild ${guild.id} for automatic unban`);
+          return;
+        }
+
+        // Verify the user is still banned
         const bans = await freshGuild.bans.fetch().catch(() => null);
         const isStillBanned = bans?.has(targetUser.id);
-        if (!isStillBanned) return;
+        if (!isStillBanned) {
+          logger.info(`User ${targetUser.id} is no longer banned in guild ${guild.id}, skipping unban`);
+          return;
+        }
 
+        // Unban the user
         await freshGuild.members.unban(targetUser.id, "Ban expired automatically.");
 
-        const unbanCase = await createModerationCase({
-          guildId: freshGuild.id,
-          userId: targetUser.id,
-          moderatorId: interaction.client.user?.id ?? "system",
-          type: "unban",
-          reason: "Ban expired automatically.",
-          metadata: {
-            automated: true
-          }
-        });
+        // Create moderation case for the unban
+        await createModerationCase(
+          {
+            guildId: freshGuild.id,
+            userId: targetUser.id,
+            moderatorId: interaction.client.user?.id ?? "system",
+            type: "unban",
+            reason: "Ban expired automatically.",
+            metadata: {
+              automated: true
+            }
+          },
+          { generateCaseId: false }
+        );
 
-        const inviteUrl = await getOrCreatePermanentInvite(freshGuild);
-        await sendModerationDm({
-          user: targetUser,
-          guildName: freshGuild.name,
-          type: "unban",
-          caseId: unbanCase.caseId,
-          reason: "Ban expired automatically.",
-          inviteUrl
-        });
+        // Fetch user for DM
+        const userForDm = await interaction.client.users.fetch(targetUser.id).catch(() => null);
+        if (userForDm) {
+          const inviteUrl = await getOrCreatePermanentInvite(freshGuild);
+          await sendModerationDm({
+            user: userForDm,
+            guildName: freshGuild.name,
+            type: "unban",
+            reason: "Ban expired automatically.",
+            inviteUrl
+          });
+        }
 
-        // Log del unban automático
+        // Log the automatic unban to staff logs
         await logModerationAction({
           guild: freshGuild,
           actionType: "unban",
-          caseId: unbanCase.caseId,
           targetUser: {
             id: targetUser.id,
-            tag: targetUser.tag,
-            username: targetUser.username
+            tag: userForDm?.tag ?? targetUser.tag,
+            username: userForDm?.username ?? targetUser.username
           },
           moderator: {
             id: interaction.client.user?.id ?? "system",
@@ -217,13 +262,27 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           reason: "Ban expired automatically.",
           metadata: { automated: true }
         });
+
+        logger.info(
+          `Successfully automatically unbanned user ${targetUser.id} in guild ${guild.id}`
+        );
       } catch (error) {
         logger.error(
-          `Error trying to automatically remove the ban of ${targetUser.id} in ${guild.id}`,
+          `Error trying to automatically remove the ban of ${targetUser.id} in ${guild.id}:`,
           error
         );
       }
-    }, durationMs).unref();
+    }, durationMs);
+
+    // Keep the timeout alive by storing it (prevents garbage collection)
+    // Using unref() allows the process to exit if this is the only thing keeping it alive
+    timeoutId.unref();
+
+    logger.info(
+      `Scheduled automatic unban for user ${targetUser.id} (${targetUser.tag}) in ${durationMs}ms (${formatDuration(durationMs)}). Will expire at ${expiresAt.toISOString()}`
+    );
+  } else {
+    logger.debug(`No automatic unban scheduled for user ${targetUser.id} - no duration provided`);
   }
 
   await interaction.editReply({
@@ -231,37 +290,10 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     embeds: [embed]
   });
 
-  // Enviar DM con invite (sin bloquear la respuesta)
-  getOrCreatePermanentInvite(guild)
-    .then((inviteUrl) => {
-      if (durationMs) {
-        return sendModerationDm({
-          user: targetUser,
-          guildName: guild.name,
-          type: "ban",
-          reason,
-          durationText: formatDuration(durationMs),
-          inviteUrl
-        });
-      } else {
-        return sendModerationDm({
-          user: targetUser,
-          guildName: guild.name,
-          type: "ban",
-          reason,
-          inviteUrl
-        });
-      }
-    })
-    .catch((error) => {
-      logger.debug("Error getting invite or sending DM in ban:", error);
-    });
-
   // Enviar log al canal de moderación
   await logModerationAction({
     guild,
     actionType: "ban",
-    caseId: moderationCase.caseId,
     targetUser: {
       id: targetUser.id,
       tag: targetUser.tag,
@@ -275,7 +307,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     evidenceUrls: evidence,
     ...(durationMs !== undefined && { durationMs }),
     ...(expiresAt !== undefined && { expiresAt }),
-    ...(moderationCase.metadata && { metadata: moderationCase.metadata })
+    ...(payload.metadata && { metadata: payload.metadata })
   });
 };
 

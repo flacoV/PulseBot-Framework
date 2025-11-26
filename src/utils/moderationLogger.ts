@@ -9,7 +9,7 @@ import { formatDuration } from "./duration.js";
 interface LogModerationActionOptions {
   guild: Guild;
   actionType: ModerationActionType;
-  caseId: number;
+  caseId?: number;
   targetUser: {
     id: string;
     tag: string;
@@ -133,7 +133,7 @@ export const logModerationAction = async (options: LogModerationActionOptions): 
         title: `${reportConfig.emoji} ${reportConfig.title}`,
         description: reportConfig.description,
         color: reportConfig.color,
-        footerText: `Case #${caseId} · ID: ${targetUser.id}`
+        footerText: caseId ? `Case #${caseId} · ID: ${targetUser.id}` : `ID: ${targetUser.id}`
       }).addFields(
         {
           name: "Reporter",
@@ -173,7 +173,7 @@ export const logModerationAction = async (options: LogModerationActionOptions): 
       title: `${config.emoji} ${config.title}`,
       description: config.description,
       color: config.color,
-      footerText: `Case #${caseId} · ID: ${targetUser.id}`
+      footerText: `ID: ${targetUser.id}`
     }).addFields(
       {
         name: "Moderator",

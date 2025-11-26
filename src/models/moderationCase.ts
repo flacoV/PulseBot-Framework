@@ -4,7 +4,7 @@ import type { ModerationActionType } from "../types/Moderation.js";
 
 const moderationCaseSchema = new Schema(
   {
-    caseId: { type: Number, required: true },
+    caseId: { type: Number, required: false },
     guildId: { type: String, required: true, index: true },
     userId: { type: String, required: true, index: true },
     moderatorId: { type: String, required: true },
@@ -26,7 +26,8 @@ const moderationCaseSchema = new Schema(
 );
 
 moderationCaseSchema.index({ guildId: 1, userId: 1, createdAt: -1 });
-moderationCaseSchema.index({ guildId: 1, caseId: -1 }, { unique: true });
+// Unique index only applies when caseId exists (for reports)
+moderationCaseSchema.index({ guildId: 1, caseId: -1 }, { unique: true, sparse: true });
 
 export type ModerationCaseDocument = InferSchemaType<typeof moderationCaseSchema>;
 

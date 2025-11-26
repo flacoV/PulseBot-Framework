@@ -170,7 +170,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     moderationPayload.expiresAt = expiresAt;
   }
 
-  const moderationCase = await createModerationCase(moderationPayload);
+  await createModerationCase(moderationPayload, { generateCaseId: false });
 
   if (expiresAt && durationMs) {
     setTimeout(async () => {
@@ -190,17 +190,20 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
         await member.roles.remove(freshRole, "Mute expired automatically.");
 
-        const unmuteCase = await createModerationCase({
-          guildId: freshGuild.id,
-          userId: member.id,
-          moderatorId: interaction.client.user?.id ?? "system",
-          type: "unmute",
-          reason: "Mute expired automatically.",
-          metadata: {
-            muteRoleId: freshRole.id,
-            automated: true
-          }
-        });
+        await createModerationCase(
+          {
+            guildId: freshGuild.id,
+            userId: member.id,
+            moderatorId: interaction.client.user?.id ?? "system",
+            type: "unmute",
+            reason: "Mute expired automatically.",
+            metadata: {
+              muteRoleId: freshRole.id,
+              automated: true
+            }
+          },
+          { generateCaseId: false }
+        );
 
         const userForDm = await member.user.fetch();
         const inviteUrl = await getOrCreatePermanentInvite(freshGuild);
@@ -208,7 +211,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           user: userForDm,
           guildName: freshGuild.name,
           type: "unmute",
-          caseId: unmuteCase.caseId,
           reason: "Mute expired automatically.",
           inviteUrl
         });
@@ -217,7 +219,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         await logModerationAction({
           guild: freshGuild,
           actionType: "unmute",
-          caseId: unmuteCase.caseId,
           targetUser: {
             id: member.id,
             tag: userForDm.tag,
@@ -240,7 +241,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   }
 
   const embed = createBaseEmbed({
-    title: `Mute applied: case #${moderationCase.caseId}`,
+    title: "Mute applied",
     description: `${targetUser} has been muted.`,
     footerText: "Remember to remove the role manually if you did not define a duration."
   }).addFields(
@@ -288,7 +289,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           user: targetUser,
           guildName: guild.name,
           type: "mute",
-          caseId: moderationCase.caseId,
           reason,
           durationText: formatDuration(durationMs),
           inviteUrl
@@ -298,7 +298,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
           user: targetUser,
           guildName: guild.name,
           type: "mute",
-          caseId: moderationCase.caseId,
           reason,
           inviteUrl
         });
@@ -312,7 +311,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   await logModerationAction({
     guild,
     actionType: "mute",
-    caseId: moderationCase.caseId,
     targetUser: {
       id: targetUser.id,
       tag: targetUser.tag,
@@ -326,7 +324,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     evidenceUrls: evidence,
     ...(durationMs !== undefined && { durationMs }),
     ...(expiresAt !== undefined && { expiresAt }),
-    ...(moderationCase.metadata && { metadata: moderationCase.metadata })
+    ...(moderationPayload.metadata && { metadata: moderationPayload.metadata })
   });
 };
 

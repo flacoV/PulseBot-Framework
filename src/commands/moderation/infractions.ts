@@ -36,14 +36,15 @@ const builder = new SlashCommandBuilder()
   });
 
 const formatCaseLine = (modCase: {
-  caseId: number;
+  caseId?: number | null;
   type: ModerationActionType;
   reason: string;
   createdAt: Date;
   moderatorId: string;
 }) => {
   const timestamp = `<t:${Math.floor(new Date(modCase.createdAt).getTime() / 1000)}:R>`;
-  return `#${modCase.caseId} · **${modCase.type.toUpperCase()}** · ${timestamp}\n> ${modCase.reason}\n> Responsible: <@${modCase.moderatorId}>`;
+  const caseIdPrefix = modCase.caseId ? `#${modCase.caseId} · ` : "";
+  return `${caseIdPrefix}**${modCase.type.toUpperCase()}** · ${timestamp}\n> ${modCase.reason}\n> Responsible: <@${modCase.moderatorId}>`;
 };
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
@@ -105,7 +106,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
       {
         name: "Last action",
         value: lastCaseForView
-          ? `#${lastCaseForView.caseId} · ${lastCaseForView.type} · <t:${Math.floor(
+          ? `${lastCaseForView.caseId ? `#${lastCaseForView.caseId} · ` : ""}${lastCaseForView.type} · <t:${Math.floor(
               new Date(lastCaseForView.createdAt).getTime() / 1000
             )}:R>`
           : "N/A",

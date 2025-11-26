@@ -96,17 +96,20 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
   await targetMember.kick(`Kick by ${interaction.user.tag}: ${reason}`);
 
-  const moderationCase = await createModerationCase({
-    guildId: guild.id,
-    userId: targetUser.id,
-    moderatorId: interaction.user.id,
-    type: "kick",
-    reason,
-    evidenceUrls: evidence
-  });
+  await createModerationCase(
+    {
+      guildId: guild.id,
+      userId: targetUser.id,
+      moderatorId: interaction.user.id,
+      type: "kick",
+      reason,
+      evidenceUrls: evidence
+    },
+    { generateCaseId: false }
+  );
 
   const embed = createBaseEmbed({
-      title: `Kick applied: case #${moderationCase.caseId}`,
+    title: "Kick applied",
     description: `${targetUser.tag} has been kicked from the server.`,
     footerText: "Use /infractions to review the full history."
   }).addFields(
@@ -146,7 +149,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         user: targetUser,
         guildName: guild.name,
         type: "kick",
-        caseId: moderationCase.caseId,
         reason,
         inviteUrl
       })
@@ -159,7 +161,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
   await logModerationAction({
     guild,
     actionType: "kick",
-    caseId: moderationCase.caseId,
     targetUser: {
       id: targetUser.id,
       tag: targetUser.tag,

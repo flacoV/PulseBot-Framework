@@ -129,19 +129,27 @@ export const processUserReport = async (
     // Format evidence
     const evidence = formatEvidence(evidenceInput);
 
-    // Create moderation case of type "note" (report)
-    const moderationCase = await createModerationCase({
-      guildId: guild.id,
-      userId: reportedUserId,
-      moderatorId: reporter.id,
-      type: "note",
-      reason: `[REPORT] ${reason}`,
-      ...(evidence.length > 0 && { evidenceUrls: evidence }),
-      metadata: {
-        reportedBy: reporter.id,
-        reportType: "user_report"
-      }
-    });
+    // Create moderation case of type "note" (report) with case ID
+    const moderationCase = await createModerationCase(
+      {
+        guildId: guild.id,
+        userId: reportedUserId,
+        moderatorId: reporter.id,
+        type: "note",
+        reason: `[REPORT] ${reason}`,
+        ...(evidence.length > 0 && { evidenceUrls: evidence }),
+        metadata: {
+          reportedBy: reporter.id,
+          reportType: "user_report"
+        }
+      },
+      { generateCaseId: true }
+    );
+
+    // Ensure caseId exists (it should always exist for reports)
+    if (!moderationCase.caseId) {
+      throw new Error("Case ID was not generated for report");
+    }
 
     // Send log to the report channel if configured
     await logUserReport({

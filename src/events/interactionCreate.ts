@@ -2,6 +2,7 @@ import type { ChatInputCommandInteraction, Interaction, TextChannel } from "disc
 
 import type { BotClient } from "../types/BotClient.js";
 import type { EventModule } from "../types/Event.js";
+import { configurationService } from "../services/configurationService.js";
 import { logger } from "../utils/logger.js";
 import { ensureStaffAccess, hasStaffAccess } from "../utils/accessControl.js";
 
@@ -299,7 +300,17 @@ const event: EventModule<"interactionCreate"> = {
           const channel = interaction.channel as TextChannel;
 
           // Verify that the channel is a private report channel
-          if (!channel.name.startsWith("report-")) {
+          // Check for both "report-" and "reporte-" to handle both naming conventions
+          const isReportChannelByName = channel.name.startsWith("report-") || channel.name.startsWith("reporte-");
+          
+          // Also verify the channel is in the configured private report category
+          const moderationConfig = await configurationService.getModerationConfig(interaction.guildId);
+          const configuredCategoryId = moderationConfig?.reportPrivateChannelCategoryId;
+          const isInReportCategory = configuredCategoryId && channel.parentId === configuredCategoryId;
+          
+          // Allow if either condition is met (name pattern OR category match)
+          // This provides flexibility while maintaining security
+          if (!isReportChannelByName && !isInReportCategory) {
             await interaction.followUp({
               content: "This command can only be used in private report channels.",
               ephemeral: true
@@ -350,14 +361,24 @@ const event: EventModule<"interactionCreate"> = {
             | "support"
             | "other";
 
-          const { createTicket, sendTicketInitialMessage } = await import("../utils/ticketHandler.js");
+          const { createTicket, sendTicketInitialMessage, hasOpenTicket } = await import("../utils/ticketHandler.js");
+
+          // Check if user already has an open ticket before attempting to create
+          const existingTicket = await hasOpenTicket(interaction.guild, interaction.user.id);
+          if (existingTicket) {
+            await interaction.followUp({
+              content: `❌ You already have an open ticket: <#${existingTicket.id}>\n\nPlease close your current ticket before creating a new one.`,
+              ephemeral: true
+            }).catch(() => {});
+            return;
+          }
 
           const channel = await createTicket(interaction.guild, interaction.user.id, category);
 
           if (!channel) {
             await interaction.followUp({
               content:
-                "No se pudo crear el ticket. Verifica que la categoría esté configurada correctamente con `/setup-ticket-category`.",
+                "Could not create ticket. Please ensure the category is configured correctly using `/setup-ticket-category`.",
               ephemeral: true
             }).catch(() => {});
             return;
@@ -366,13 +387,13 @@ const event: EventModule<"interactionCreate"> = {
           await sendTicketInitialMessage(channel, interaction.user.id, category);
 
           await interaction.followUp({
-            content: `✅ Ticket creado: <#${channel.id}>`,
+            content: `✅ Ticket created: <#${channel.id}>`,
             ephemeral: true
           }).catch(() => {});
         } catch (error) {
-          logger.error("Error al crear ticket:", error);
+          logger.error("Error creating ticket:", error);
           await interaction.followUp({
-            content: "Ocurrió un error al crear el ticket.",
+            content: "An error occurred while creating the ticket.",
             ephemeral: true
           }).catch(() => {});
         }
@@ -383,7 +404,7 @@ const event: EventModule<"interactionCreate"> = {
       if (interaction.customId.startsWith("ticket_take_")) {
         if (!interaction.inGuild() || !interaction.guild) {
           await (interaction as any).reply({
-            content: "Este botón solo puede usarse dentro de un servidor.",
+            content: "This button can only be used within a server.",
             ephemeral: true
           });
           return;

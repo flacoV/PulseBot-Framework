@@ -18,13 +18,22 @@ const getNextCaseId = async (guildId: string) => {
   return counter?.lastCaseId ?? 1;
 };
 
-export const createModerationCase = async (payload: CreateModerationCaseInput) => {
-  const caseId = await getNextCaseId(payload.guildId);
+/**
+ * Creates a moderation case. Case IDs are only generated for reports.
+ * Regular moderation actions (warn, mute, kick, ban) do not get case IDs.
+ */
+export const createModerationCase = async (
+  payload: CreateModerationCaseInput,
+  options?: { generateCaseId?: boolean }
+) => {
+  const shouldGenerateCaseId = options?.generateCaseId ?? false;
+  const caseId = shouldGenerateCaseId ? await getNextCaseId(payload.guildId) : undefined;
 
-  const moderationCase = await ModerationCaseModel.create({
-    ...payload,
-    caseId
-  });
+  const createPayload = shouldGenerateCaseId && caseId
+    ? { ...payload, caseId }
+    : payload;
+
+  const moderationCase = await ModerationCaseModel.create(createPayload);
 
   return moderationCase.toObject();
 };
@@ -76,7 +85,7 @@ export const getUserStats = async (guildId: string, userId: string): Promise<Mod
 
   if (lastCase) {
     stats.lastAction = {
-      caseId: lastCase.caseId,
+      ...(lastCase.caseId != null && { caseId: lastCase.caseId }),
       type: lastCase.type,
       reason: lastCase.reason,
       createdAt: lastCase.createdAt
